@@ -642,7 +642,7 @@ export class MultiPageEditor {
     // const endIndex = this.pages.length * this.avgPageLength;
     // const scrollPage = startIndex / (this.pages.length * this.avgPageLength)
     // const endIndex = this.avgPageLength;
-    const endIndex = startIndex + 1500;
+    const endIndex = startIndex + this.avgPageLength;
 
     const formattedText = this.getFormattedText(startIndex, endIndex);
     const layout = this.getLayoutInfo(startIndex, endIndex);

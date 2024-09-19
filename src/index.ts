@@ -154,6 +154,10 @@ const handleKeydown = (e: KeyboardEvent) => {
             false
           );
 
+          jsonByPage = getJsonByPage(masterJson);
+
+          renderTextNodes(stage, layer, jsonByPage);
+
           window.__canvasRTEInsertCharacterIndex =
             window.__canvasRTEInsertCharacterIndex + 1;
         }
@@ -342,6 +346,8 @@ const testMarkdown = `The ancient Mayan civilization was renowned for its remark
 useMultiPageRTE(testMarkdown, mainTextSize);
 
 const renderTextNodes = (stg, lyr, jsonByPage) => {
+  lyr.destroyChildren();
+
   Object.keys(jsonByPage).forEach((key, i) => {
     const masterJson = jsonByPage[key];
 

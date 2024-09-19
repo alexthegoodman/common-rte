@@ -1,0 +1,11 @@
+{
+  "name": "common-rte",
+  "version": "1.0.0",
+  "description": "Multi-Page Rich Text Editor for Web",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alex Goodman",
+  "license": "MIT"
+}

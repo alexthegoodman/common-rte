@@ -660,12 +660,13 @@ export class MultiPageEditor {
       "render-visible-ended"
     );
 
-    return combined;
+    return { startIndex, combined };
   }
 
   renderAll() {
     // const startIndex = this.scrollPosition * this.size.height;
-    const startIndex = this.scrollPosition ? this.scrollPosition / 26 : 0;
+    console.info("render all", this.pages.length);
+    const startIndex = 0;
     const endIndex = this.pages.length * this.avgPageLength;
 
     const formattedText = this.getFormattedText(startIndex, endIndex);
@@ -743,16 +744,16 @@ export class MultiPageEditor {
 
     // this.rebalanceDebounce = setTimeout(() => {
     this.rebalancePages(pageIndex, initialize);
-    const renderable = this.renderVisible();
-    setMasterJson(renderable);
+    const { startIndex, combined } = this.renderVisible();
+    setMasterJson(combined, startIndex);
     // }, 20);
 
-    // this.rebalanceDebounceStaggered = setTimeout(() => {
-    //   // update other page layouts in staggered fashion, first is done in rebalancePages()
-    //   this.updatePageLayouts(pageIndex); // expensive operation
-    //   const renderableAll = this.renderAll();
-    //   setMasterJson(renderableAll);
-    // }, 1000);
+    this.rebalanceDebounceStaggered = setTimeout(() => {
+      // update other page layouts in staggered fashion, first is done in rebalancePages()
+      this.updatePageLayouts(pageIndex); // expensive operation
+      const renderableAll = this.renderAll();
+      setMasterJson(renderableAll);
+    }, 1000);
   }
 
   getLayoutInfo(start: number, end: number) {
@@ -761,7 +762,7 @@ export class MultiPageEditor {
     let startPage = this.getPageIndexForGlobalIndex(start);
     let endPage = this.getPageIndexForGlobalIndex(end);
 
-    // console.info("getLayoutInfo: ", startPage, endPage);
+    console.info("getLayoutInfo: ", start, end, startPage, endPage);
 
     // Optimization for single-page queries
     if (startPage === endPage) {

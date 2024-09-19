@@ -9,6 +9,12 @@ import IntervalTree, {
 import * as fontkit from "fontkit";
 // import { KonvaEventObject } from "konva/lib/Node";
 // import { useEffect, useMemo, useRef, useState } from "react";
+import { Buffer } from "buffer";
+
+import fontUrl from "../src/assets/fonts/Inter-Regular.ttf";
+
+// @ts-ignore
+window.Buffer = Buffer;
 
 interface MappedFormat {
   interval: {
@@ -62,19 +68,19 @@ export const defaultStyle: Style = {
 
 const blobToBuffer = async (blob: Blob) => {
   const arrayBuffer = await blob.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  const buffer = window.Buffer.from(arrayBuffer);
   return buffer;
 };
 
-const loadFont = async (setFont: (font: fontkit.Font) => void) => {
+export const loadFont = async (setFont: (font: fontkit.Font) => void) => {
   try {
-    const response = await fetch("/fonts/Inter-Regular.ttf");
+    const response = await fetch(fontUrl);
     const blob = await response.blob();
     const buffer = await blobToBuffer(blob);
     const font = fontkit.create(buffer);
     setFont(font as fontkit.Font);
   } catch (error) {
-    console.error("Error loading font", error);
+    console.error("Error loading font", fontUrl, error);
     // TODO: show snackbar, disable loading of initial text, possibly try loading other font
   }
 };

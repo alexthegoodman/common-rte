@@ -31,16 +31,16 @@ const setMasterJson = (json, optionalInsertIndex) => {
           ...masterJson.slice(optionalInsertIndex + json.length), // Keep the elements after the replaced portion
         ]
       : json;
-  console.info("check json", masterJson, editorInstance);
+  // console.info("check json", masterJson, editorInstance);
   jsonByPage = getJsonByPage(masterJson);
 
   if (editorInstance) {
     if (jsonByPage && jsonByPage[0] && !stage) {
-      console.info(
-        "render nodes",
-        Object.keys(jsonByPage).length,
-        editorInstance.pages.length
-      );
+      // console.info(
+      //   "render nodes",
+      //   Object.keys(jsonByPage).length,
+      //   editorInstance.pages.length
+      // );
       // initialize stage and layers
       stage = new Konva.Stage({
         container: "container",
@@ -49,6 +49,8 @@ const setMasterJson = (json, optionalInsertIndex) => {
       });
 
       layer = new Konva.Layer();
+
+      stage?.add(layer);
     }
 
     stage.height(documentSize.height * editorInstance.pages.length);
@@ -215,7 +217,9 @@ const handleScrollEnd = (e: Event) => {
   if (editorInstance) {
     // const { startIndex, combined } = editorInstance.renderVisible();
     // setMasterJson(combined);
-    editorInstance.renderAndRebalance(0, setMasterJson, false);
+    const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+    console.info("roughPage", roughPage);
+    editorInstance.renderAndRebalance(roughPage, setMasterJson, false);
   }
 };
 
@@ -442,7 +446,14 @@ useMultiPageRTE(testMarkdown, mainTextSize);
 const renderTextNodes = (stg, lyr, jsonByPage) => {
   lyr.destroyChildren();
 
-  //
+  // make jsonByPage return only the page, or detect current page here and filter by it?
+
+  const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+  console.info("roughPage render nodes", roughPage);
+
+  console.info("render nodes", jsonByPage);
+
+  let globalIndex = 0;
   for (let i = 0; i < editorInstance.pages.length; i++) {
     const masterJson = jsonByPage[i];
 
@@ -467,49 +478,58 @@ const renderTextNodes = (stg, lyr, jsonByPage) => {
     lyr.add(pageInner);
   }
 
-  Object.keys(jsonByPage).forEach((key, i) => {
-    const masterJson = jsonByPage[key];
+  // Object.keys(jsonByPage).forEach((key, i) => {
+  let i = roughPage,
+    key = roughPage;
+  // add up all lengths in array of arrays before index
+  let totalLengthBeforeIndex = Object.values(jsonByPage)
+    .slice(0, roughPage) // Get all arrays before the index
+    .reduce((sum, arr) => sum + arr.length, 0); // Sum up their lengths
 
-    var group = new Konva.Group({
-      x: marginSize.x,
-      y: documentSize.height * i + marginSize.y,
-    });
+  const masterJson = jsonByPage[key];
 
-    masterJson.forEach((charText: RenderItem, i) => {
-      const charId = `${charText.char}-${charText.page}-${i}`;
-      // const isSelected = selectedTextNodes.includes(charId);
-      if (firstSelectedNode === charId && lastSelectedNode) {
-        isSelected = true;
-      }
-
-      if (lastSelectedNode === charId) {
-        isSelected = false;
-      }
-
-      let newText = new Konva.Text({
-        id: charId,
-        x: charText?.x,
-        y: charText?.y,
-        text: charText.char,
-        fontSize: charText.format.fontSize,
-        fontFamily: charText.format.fontFamily,
-        fontStyle: charText.format.italic
-          ? "italic"
-          : charText.format.fontWeight,
-        fill: charText.format.color,
-        textDecoration: charText.format.underline ? "underline" : "",
-        // onClick: handleTextClick,
-        // onMouseDown: handleTextMouseDown,
-        // onMouseMove: handleTextMouseMove,
-        // onMouseUp: handleTextMouseUp,
-      });
-
-      newText.on("click", handleTextClick);
-
-      group.add(newText);
-    });
-
-    lyr?.add(group);
-    stg?.add(lyr);
+  var group = new Konva.Group({
+    x: marginSize.x,
+    y: documentSize.height * i + marginSize.y,
   });
+
+  masterJson.forEach((charText: RenderItem, i) => {
+    const charId = `${charText.char}-${charText.page}-${
+      totalLengthBeforeIndex + globalIndex
+    }`;
+    // const isSelected = selectedTextNodes.includes(charId);
+    if (firstSelectedNode === charId && lastSelectedNode) {
+      isSelected = true;
+    }
+
+    if (lastSelectedNode === charId) {
+      isSelected = false;
+    }
+
+    let newText = new Konva.Text({
+      id: charId,
+      x: charText?.x,
+      y: charText?.y,
+      text: charText.char,
+      fontSize: charText.format.fontSize,
+      fontFamily: charText.format.fontFamily,
+      fontStyle: charText.format.italic ? "italic" : charText.format.fontWeight,
+      fill: charText.format.color,
+      textDecoration: charText.format.underline ? "underline" : "",
+      // onClick: handleTextClick,
+      // onMouseDown: handleTextMouseDown,
+      // onMouseMove: handleTextMouseMove,
+      // onMouseUp: handleTextMouseUp,
+    });
+
+    newText.on("click", handleTextClick);
+
+    group.add(newText);
+
+    globalIndex++;
+  });
+
+  lyr?.add(group);
+  // stg?.add(lyr);
+  // });
 };

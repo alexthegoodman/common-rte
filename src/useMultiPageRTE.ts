@@ -646,6 +646,7 @@ export class MultiPageEditor {
 
     const formattedText = this.getFormattedText(startIndex, endIndex);
     const layout = this.getLayoutInfo(startIndex, endIndex);
+    console.info("check items", formattedText, layout);
     const combined = this.combineTextAndLayout(
       formattedText,
       layout,
@@ -665,7 +666,7 @@ export class MultiPageEditor {
 
   renderAll() {
     // const startIndex = this.scrollPosition * this.size.height;
-    console.info("render all", this.pages.length);
+    // console.info("render all", this.pages.length);
     const startIndex = 0;
     const endIndex = this.pages.length * this.avgPageLength;
 
@@ -692,13 +693,13 @@ export class MultiPageEditor {
     let endPageIndex = this.getPageIndexForGlobalIndex(globalEnd);
     let endLocalIndex = this.getLocalIndex(globalEnd, endPageIndex);
 
-    console.info(
-      "alter formatting ",
-      startPageIndex,
-      endPageIndex,
-      startLocalIndex,
-      endLocalIndex
-    );
+    // console.info(
+    //   "alter formatting ",
+    //   startPageIndex,
+    //   endPageIndex,
+    //   startLocalIndex,
+    //   endLocalIndex
+    // );
 
     if (startPageIndex === endPageIndex) {
       this.pages[startPageIndex].alterFormatting(
@@ -743,15 +744,16 @@ export class MultiPageEditor {
     clearTimeout(this.rebalanceDebounceStaggered);
 
     this.rebalancePages(pageIndex, initialize);
-    const { startIndex, combined } = this.renderVisible();
-    setMasterJson(combined, startIndex);
+    // const { startIndex, combined } = this.renderVisible();
+    // console.info("renderAndRebalance", startIndex, combined);
+    // setMasterJson(combined, startIndex);
 
-    this.rebalanceDebounceStaggered = setTimeout(() => {
-      // update other page layouts in staggered fashion, first is done in rebalancePages()
-      this.updatePageLayouts(pageIndex); // expensive operation
-      const renderableAll = this.renderAll();
-      setMasterJson(renderableAll);
-    }, 500);
+    // this.rebalanceDebounceStaggered = setTimeout(() => {
+    //   // update other page layouts in staggered fashion, first is done in rebalancePages()
+    this.updatePageLayouts(pageIndex); // expensive operation
+    const renderableAll = this.renderAll();
+    setMasterJson(renderableAll);
+    // }, 500);
   }
 
   getLayoutInfo(start: number, end: number) {
@@ -760,7 +762,7 @@ export class MultiPageEditor {
     let startPage = this.getPageIndexForGlobalIndex(start);
     let endPage = this.getPageIndexForGlobalIndex(end);
 
-    console.info("getLayoutInfo: ", start, end, startPage, endPage);
+    // console.info("getLayoutInfo: ", start, end, startPage, endPage);
 
     // Optimization for single-page queries
     if (startPage === endPage) {
@@ -793,7 +795,12 @@ export class MultiPageEditor {
     let renderItems: RenderItem[] = [];
     let textIndex = 0;
 
-    console.info("formattedText and layout", formattedText, layout);
+    const startPage = this.getPageIndexForGlobalIndex(startIndex);
+    // const localStart = this.getLocalIndex(startIndex, startPage);
+    // const endPage = this.getPageIndexForGlobalIndex(endIndex);
+    // const localEnd = this.getLocalIndex(endIndex, endPage);
+
+    // console.info("formattedText and layout", formattedText, layout);
 
     for (const layoutItem of layout) {
       const { start, end, layoutInfo } = layoutItem;
@@ -815,8 +822,12 @@ export class MultiPageEditor {
 
       // const virtualizedStart = Math.max(startIndex - start, 0);
       // const virtualizedEnd = Math.min(endIndex - start, layoutInfo.length);
-      const virtualizedStart = startIndex;
-      const virtualizedEnd = Math.min(endIndex, layoutInfo.length);
+      // const virtualizedStart = startIndex;
+      // const virtualizedEnd = Math.min(endIndex, layoutInfo.length);
+      const virtualizedStart = startIndex - startPage * 3000;
+      const virtualizedEnd = layoutInfo.length;
+
+      console.info("combineTextAndLayout", virtualizedStart, virtualizedEnd);
 
       for (let i = virtualizedStart; i < virtualizedEnd; i++) {
         const charLayout = layoutInfo[i];
@@ -928,6 +939,11 @@ export class MultiPageEditor {
       // currentPage.updateLayout(0, currentPage.content.length);
     }
 
+    // console.info(
+    //   "this.pages[startPageIndex].content.length",
+    //   startPageIndex,
+    //   this.pages[startPageIndex].content.length
+    // );
     // update layouts in staggered manner
     this.pages[startPageIndex].updateLayout(
       0,
@@ -991,302 +1007,3 @@ export class MultiPageEditor {
     return result;
   }
 }
-
-// export const useMultiPageRTE = (
-//   initialMarkdown: string,
-//   mainTextSize: DocumentSize
-// ) => {
-//   const [fontData, setFontData] = useState(null);
-//   const [masterJson, setMasterJson] = useState<RenderItem[]>([]);
-//   const [isSelectingText, setIsSelectingText] = useState(false);
-//   // const [selectedTextNodes, setSelectedTextNodes] = useState([]);
-//   const [firstSelectedNode, setFirstSelectedNode] = useState(null);
-//   const [lastSelectedNode, setLastSelectedNode] = useState(null);
-
-//   // use ref to get up-to-date values in event listener
-//   const [editorInstance, _setEditorInstance] = useState<MultiPageEditor | null>(
-//     null
-//   );
-//   const editorInstanceRef = useRef(editorInstance);
-//   const setEditorInstance = (editor: MultiPageEditor) => {
-//     editorInstanceRef.current = editor;
-//     _setEditorInstance(editor);
-//   };
-
-//   const [editorActive, _setEditorActive] = useState(false);
-//   const editorActiveRef = useRef(editorActive);
-//   const setEditorActive = (active: boolean) => {
-//     editorActiveRef.current = active;
-//     _setEditorActive(active);
-//   };
-
-//   useEffect(() => {
-//     loadFont(setFontData);
-//   }, []);
-
-//   useEffect(() => {
-//     if (fontData) {
-//       console.info(
-//         "fontdata loaded, intializing editor",
-//         initialMarkdown.length
-//       );
-
-//       const multiPageEditor = new MultiPageEditor(mainTextSize, 70, fontData);
-//       multiPageEditor.insert(
-//         0,
-//         initialMarkdown,
-//         defaultStyle,
-//         setMasterJson,
-//         true
-//       );
-
-//       // const renderable = multiPageEditor.renderVisible();
-
-//       // console.info("renderable: ", renderable);
-
-//       setEditorInstance(multiPageEditor);
-//       // setMasterJson(renderable);
-//     }
-//   }, [fontData]);
-
-//   const handleKeydown = (e: KeyboardEvent) => {
-//     e.preventDefault();
-
-//     if (editorActiveRef.current) {
-//       // const characterId = uuidv4();
-
-//       if (!window.__canvasRTEInsertCharacterIndex) {
-//         console.info("trigger key with no cursor?");
-//         return;
-//       }
-
-//       switch (e.key) {
-//         case "Enter":
-//           {
-//             const character = "\n";
-
-//             editorInstanceRef.current?.insert(
-//               window.__canvasRTEInsertCharacterIndex,
-//               character,
-//               defaultStyle,
-//               setMasterJson,
-//               false
-//             );
-
-//             window.__canvasRTEInsertCharacterIndex =
-//               window.__canvasRTEInsertCharacterIndex + 1;
-//           }
-//           break;
-//         case "Backspace":
-//           {
-//           }
-//           break;
-//         case "Delete":
-//           {
-//           }
-//           break;
-//         case "ArrowLeft":
-//           {
-//           }
-//           break;
-//         case "ArrowRight":
-//           {
-//           }
-//           break;
-//         case "ArrowUp":
-//           {
-//           }
-//           break;
-//         case "ArrowDown":
-//           {
-//           }
-//           break;
-//         case "Escape":
-//           {
-//             setEditorActive(false);
-//           }
-//           break;
-//         case "Shift":
-//           {
-//           }
-//           break;
-//         case "Meta":
-//           {
-//           }
-//           break;
-//         case "Tab":
-//           {
-//             const type = "tab";
-//             const character = "    ";
-
-//             editorInstanceRef.current?.insert(
-//               window.__canvasRTEInsertCharacterIndex,
-//               character,
-//               defaultStyle,
-//               setMasterJson,
-//               false
-//             );
-
-//             window.__canvasRTEInsertCharacterIndex =
-//               window.__canvasRTEInsertCharacterIndex + 1;
-//           }
-//           break;
-//         default:
-//           {
-//             // any other character
-//             const type = "character";
-//             const character = e.key;
-
-//             // console.info("char", character);
-
-//             if (!editorActiveRef.current) {
-//               console.error("No editor");
-//             }
-
-//             editorInstanceRef.current?.insert(
-//               window.__canvasRTEInsertCharacterIndex,
-//               character,
-//               defaultStyle,
-//               setMasterJson,
-//               false
-//             );
-
-//             window.__canvasRTEInsertCharacterIndex =
-//               window.__canvasRTEInsertCharacterIndex + 1;
-//           }
-//           break;
-//       }
-
-//       // const renderable = editorInstanceRef.current?.renderVisible();
-
-//       // if (renderable) {
-//       //   setMasterJson(renderable);
-//       // }
-//     }
-//   };
-
-//   const handleScroll = (e: Event) => {
-//     if (editorInstanceRef.current) {
-//       editorInstanceRef.current.scrollPosition = window.scrollY;
-//     }
-//   };
-
-//   const handleScrollEnd = (e: Event) => {
-//     if (editorInstanceRef.current) {
-//       const renderable = editorInstanceRef.current.renderVisible();
-//       setMasterJson(renderable);
-//     }
-//   };
-
-//   useEffect(() => {
-//     if (fontData) {
-//       console.info("welcome to multi-page rte!");
-
-//       window.addEventListener("keydown", handleKeydown);
-//       window.addEventListener("scroll", handleScroll);
-//       window.addEventListener("scrollend", handleScrollEnd);
-
-//       return () => {
-//         window.removeEventListener("keydown", handleKeydown);
-//         window.removeEventListener("scroll", handleScroll);
-//         window.removeEventListener("scrollend", handleScrollEnd);
-//       };
-//     }
-//   }, [fontData]);
-
-//   // when no text exists, will calculate at first character
-//   const handleCanvasClick = (e: KonvaEventObject<MouseEvent>) => {
-//     console.info("canvas click");
-
-//     setEditorActive(true);
-//   };
-
-//   // set the insert index to this character
-//   const handleTextClick = (e: KonvaEventObject<MouseEvent>) => {
-//     console.info("text click");
-
-//     const target = e.target;
-//     const characterId = target.id();
-//     const characterIndex = parseInt(characterId.split("-")[2]);
-
-//     console.info("characterId", characterId, characterIndex);
-
-//     const character = masterJson[characterIndex];
-
-//     window.__canvasRTEInsertCharacterIndex = characterIndex;
-
-//     setEditorActive(true);
-//   };
-
-//   const handleTextMouseDown = (e: KonvaEventObject<MouseEvent>) => {
-//     console.info("text down", e);
-//     setIsSelectingText(true);
-
-//     const target = e.target;
-//     const characterId = target.id();
-
-//     setFirstSelectedNode(characterId);
-//     setLastSelectedNode(null);
-//   };
-//   const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
-//     if (isSelectingText && e.evt.buttons) {
-//       console.info("selecting text", e);
-
-//       const target = e.target;
-//       const characterId = target.id();
-
-//       // setSelectedTextNodes((nodes) => [characterId, ...nodes]);
-//       setLastSelectedNode(characterId);
-//     }
-//   };
-//   const handleTextMouseUp = (e: KonvaEventObject<MouseEvent>) => {
-//     console.info("text up", e);
-//     setIsSelectingText(false);
-//   };
-
-//   const handleFormattingDown = (formatting: Partial<Style>) => {
-//     if (!firstSelectedNode || !lastSelectedNode) {
-//       return;
-//     }
-
-//     const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
-//     const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
-
-//     console.info("formatting on ", firstIndex, lastIndex, formatting);
-
-//     editorInstanceRef.current?.alterFormatting(
-//       firstIndex,
-//       lastIndex,
-//       formatting,
-//       setMasterJson
-//     );
-//   };
-
-//   const jsonByPage = useMemo(() => {
-//     const pages = masterJson.reduce((acc, char) => {
-//       // if (!char.page) return acc;
-//       if (!acc[char.page]) {
-//         acc[char.page] = [];
-//       }
-
-//       acc[char.page].push(char);
-
-//       return acc;
-//     }, {} as { [key: number]: RenderItem[] });
-
-//     return pages;
-//   }, [masterJson]);
-
-//   return {
-//     masterJson,
-//     jsonByPage,
-//     firstSelectedNode,
-//     lastSelectedNode,
-//     handleCanvasClick,
-//     handleTextClick,
-//     handleTextMouseDown,
-//     handleTextMouseMove,
-//     handleTextMouseUp,
-//     handleFormattingDown,
-//   };
-// };

@@ -23,14 +23,15 @@ let stage = null;
 let layer = null;
 
 const setMasterJson = (json, optionalInsertIndex) => {
-  masterJson = optionalInsertIndex
-    ? [
-        ...masterJson.slice(0, optionalInsertIndex), // Keep the elements before the replacement
-        ...json, // Insert the new elements
-        ...masterJson.slice(optionalInsertIndex + json.length), // Keep the elements after the replaced portion
-      ]
-    : json;
-  console.info("check json", masterJson);
+  masterJson =
+    optionalInsertIndex && masterJson
+      ? [
+          ...masterJson.slice(0, optionalInsertIndex), // Keep the elements before the replacement
+          ...json, // Insert the new elements
+          ...masterJson.slice(optionalInsertIndex + json.length), // Keep the elements after the replaced portion
+        ]
+      : json;
+  console.info("check json", masterJson, editorInstance);
   jsonByPage = getJsonByPage(masterJson);
 
   if (editorInstance) {
@@ -296,6 +297,9 @@ export const useMultiPageRTE = (
     console.info("fontdata loaded, intializing editor", initialMarkdown.length);
 
     const multiPageEditor = new MultiPageEditor(mainTextSize, 70, fontData);
+
+    editorInstance = multiPageEditor;
+
     multiPageEditor.insert(
       0,
       initialMarkdown,
@@ -304,22 +308,11 @@ export const useMultiPageRTE = (
       true
     );
 
-    //   setEditorInstance(multiPageEditor);
-    editorInstance = multiPageEditor;
-
     window.addEventListener("keydown", handleKeydown);
     window.addEventListener("scroll", handleScroll);
     window.addEventListener("scrollend", handleScrollEnd);
 
-    console.info("rendering", jsonByPage);
-
-    if (jsonByPage && jsonByPage[0]) {
-      // update text nodes
-      let stg = stage ? stage : pureStage;
-      let lyr = layer ? layer : pureLayer;
-
-      console.info("render text nodes", stg, lyr);
-    }
+    // console.info("rendering", jsonByPage);
 
     //   return () => {
     //     window.removeEventListener("keydown", handleKeydown);

@@ -638,7 +638,7 @@ export class MultiPageEditor {
     // const startIndex = Math.round(
     //   this.scrollPosition ? this.scrollPosition / 26 : 0
     // );
-    const startIndex = Math.round(this.scrollPosition);
+    const startIndex = Math.round(this.scrollPosition * 3);
     // const endIndex = this.pages.length * this.avgPageLength;
     // const scrollPage = startIndex / (this.pages.length * this.avgPageLength)
     // const endIndex = this.avgPageLength;
@@ -742,18 +742,16 @@ export class MultiPageEditor {
     clearTimeout(this.rebalanceDebounce);
     clearTimeout(this.rebalanceDebounceStaggered);
 
-    // this.rebalanceDebounce = setTimeout(() => {
     this.rebalancePages(pageIndex, initialize);
     const { startIndex, combined } = this.renderVisible();
     setMasterJson(combined, startIndex);
-    // }, 20);
 
     this.rebalanceDebounceStaggered = setTimeout(() => {
       // update other page layouts in staggered fashion, first is done in rebalancePages()
       this.updatePageLayouts(pageIndex); // expensive operation
       const renderableAll = this.renderAll();
       setMasterJson(renderableAll);
-    }, 1000);
+    }, 500);
   }
 
   getLayoutInfo(start: number, end: number) {

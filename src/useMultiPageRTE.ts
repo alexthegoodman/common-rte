@@ -748,11 +748,13 @@ export class MultiPageEditor {
     // console.info("renderAndRebalance", startIndex, combined);
     // setMasterJson(combined, startIndex);
 
-    // this.rebalanceDebounceStaggered = setTimeout(() => {
-    //   // update other page layouts in staggered fashion, first is done in rebalancePages()
-    this.updatePageLayouts(pageIndex); // expensive operation
+    // this.updatePageLayouts(pageIndex); // expensive operation
     const renderableAll = this.renderAll();
     setMasterJson(renderableAll);
+
+    // this.rebalanceDebounceStaggered = setTimeout(() => {
+    //   // update other page layouts in staggered fashion, first is done in rebalancePages()
+
     // }, 500);
   }
 

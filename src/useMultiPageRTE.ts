@@ -875,19 +875,72 @@ export class MultiPageEditor {
     return renderItems;
   }
 
+  // rebalancePages(startPageIndex: number, initialize = false) {
+  //   performance.mark("rebalance-started");
+
+  //   const pageHeight = this.size.height;
+
+  //   // TODO: may not account for large text pasted in (creating mutliple new pages)
+  //   let totalPages = this.pages.length;
+  //   if (initialize) {
+  //     totalPages =
+  //       Math.round(this.pages[0].content.length / this.avgPageLength) - 1; // 0-indexed
+  //   }
+
+  //   for (let i = startPageIndex; i < totalPages; i++) {
+  //     const currentPage = this.pages[i];
+
+  //     if (typeof currentPage === "undefined") {
+  //       break;
+  //     }
+
+  //     const nextPage =
+  //       this.pages[i + 1] || new FormattedPage(this.size, this.fontData);
+
+  //     currentPage.pageNumber = i; // Update page number
+  //     nextPage.pageNumber = i + 1;
+
+  //     while (currentPage.content.length > this.avgPageLength) {
+  //       const overflowText = currentPage.content.substring(this.avgPageLength);
+  //       const overflowFormatting = currentPage.formatting.search(
+  //         [this.avgPageLength, Infinity],
+  //         (value, key) => ({
+  //           interval: key,
+  //           format: value,
+  //         })
+  //       ) as unknown as MappedFormat[];
+
+  //       currentPage.delete(this.avgPageLength, currentPage.content.length);
+  //       nextPage.insert(0, overflowText, overflowFormatting[0].format);
+  //     }
+
+  //     if (nextPage.content.length > 0 && !this.pages[i + 1]) {
+  //       this.pages.push(nextPage);
+  //     }
+  //   }
+
+  //   // update layouts in staggered manner
+  //   this.pages[startPageIndex].updateLayout(
+  //     0,
+  //     this.pages[startPageIndex].content.length
+  //   );
+
+  //   performance.mark("rebalance-ended");
+  //   performance.measure("rebalance", "rebalance-started", "rebalance-ended");
+  // }
+
   rebalancePages(startPageIndex: number, initialize = false) {
     performance.mark("rebalance-started");
 
     const pageHeight = this.size.height;
 
-    // TODO: may not account for large text pasted in (creating mutliple new pages)
     let totalPages = this.pages.length;
     if (initialize) {
-      totalPages =
-        Math.round(this.pages[0].content.length / this.avgPageLength) - 1; // 0-indexed
+      totalPages = Math.max(
+        1,
+        Math.ceil(this.pages[0].content.length / this.avgPageLength)
+      );
     }
-
-    // console.info("total pages", startPageIndex, this.pages.length, totalPages);
 
     for (let i = startPageIndex; i < totalPages; i++) {
       const currentPage = this.pages[i];
@@ -896,54 +949,48 @@ export class MultiPageEditor {
         break;
       }
 
-      // console.info("page", i);
-
       const nextPage =
         this.pages[i + 1] || new FormattedPage(this.size, this.fontData);
 
-      currentPage.pageNumber = i; // Update page number
+      currentPage.pageNumber = i;
       nextPage.pageNumber = i + 1;
 
-      while (currentPage.content.length > this.avgPageLength) {
-        // const overflow = currentPage.content.length - pageHeight;
-        // const overflow = Math.abs(
-        //   this.avgPageLength - currentPage.content.length
-        // );
-        // const overflowText = currentPage.content.slice(-overflow).join("");
-        // const overflowText = currentPage.content.substring(
-        //   currentPage.content.length - overflow
-        // );
-        // console.info("overflow", overflow, currentPage.content.length);
-        const overflowText = currentPage.content.substring(this.avgPageLength);
+      // Calculate layout for the current page
+      const layoutInfo = currentPage.calculateLayout(
+        currentPage.content.substring(0, currentPage.content.length),
+        currentPage.formatting.search(
+          [0, currentPage.content.length],
+          (value, key) => ({
+            interval: key,
+            format: value,
+          })
+        ) as unknown as MappedFormat[],
+        0,
+        i
+      );
+
+      // Find the index where the next page starts
+      const nextPageStartIndex = layoutInfo.findIndex((info) => info.page > i);
+
+      if (nextPageStartIndex !== -1) {
+        const overflowText = currentPage.content.substring(nextPageStartIndex);
         const overflowFormatting = currentPage.formatting.search(
-          // [this.size.height, Infinity],
-          [this.avgPageLength, Infinity],
+          [nextPageStartIndex, Infinity],
           (value, key) => ({
             interval: key,
             format: value,
           })
         ) as unknown as MappedFormat[];
 
-        // currentPage.delete(pageHeight, currentPage.content.length);
-        currentPage.delete(this.avgPageLength, currentPage.content.length);
+        currentPage.delete(nextPageStartIndex, currentPage.content.length);
         nextPage.insert(0, overflowText, overflowFormatting[0].format);
       }
 
-      // if (nextPage.content.length > 0 && i + 1 >= this.pages.length) {
       if (nextPage.content.length > 0 && !this.pages[i + 1]) {
         this.pages.push(nextPage);
       }
-      // TODO: add splice operation for existing page in this.pages
-
-      // put in squential loop to prevent slowing this loop
-      // currentPage.updateLayout(0, currentPage.content.length);
     }
 
-    // console.info(
-    //   "this.pages[startPageIndex].content.length",
-    //   startPageIndex,
-    //   this.pages[startPageIndex].content.length
-    // );
     // update layouts in staggered manner
     this.pages[startPageIndex].updateLayout(
       0,

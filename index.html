@@ -8,6 +8,7 @@
     </head>
     <body>
         <div class="toolbar">
+          <label>Alter Text:</label>
           <select id="cmnFontSize">
             <option value="10">10</option>
             <option value="14">14</option>
@@ -20,6 +21,10 @@
           <button id="cmnBold">Bold</button>
           <button id="cmnItalic">Italic</button>
           <button id="cmnUnderline">Underline</button>
+          <label>Add Visuals:</label>
+          <button id="circle">Circle</button>
+          <button id="rectangle">Rectangle</button>
+          <button id="image">Image</button>
         </div>
         <div id="cmnContainer"></div>
         <script type="module" src="./src/index.ts"></script>
@@ -33,6 +38,7 @@
             .toolbar {
               display: flex;
               flex-direction: row;
+              gap: 5px;
             }
           </style>
           <div className="preloadFont" style="font-family: 'Inter'">

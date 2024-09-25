@@ -26,6 +26,7 @@ let highlightGroup = null;
 let isSelected = false;
 
 let debounceTimer = null;
+let shadowSize = 25;
 
 export const initializeMultiPageRTE = (
   initialMarkdown: string,
@@ -58,8 +59,9 @@ export const initializeMultiPageRTE = (
         // initialize stage and layers
         stage = new Konva.Stage({
           container: "cmnContainer",
-          width: documentSize.width,
-          height: documentSize.height * editorInstance.pages.length,
+          width: documentSize.width + shadowSize,
+          height:
+            (documentSize.height + shadowSize) * editorInstance.pages.length,
         });
 
         // highlightLayer = new Konva.Layer();
@@ -308,15 +310,21 @@ export const initializeMultiPageRTE = (
 
       var pageOuter = new Konva.Rect({
         x: 0,
-        y: documentSize.height * i,
+        y: (documentSize.height + shadowSize) * i,
         width: documentSize.width,
         height: documentSize.height,
-        fill: "#e5e5e5",
+        fill: "#fff",
+        shadowEnabled: true,
+        shadowColor: "black",
+        shadowOffsetX: 2,
+        shadowOffsetY: 2,
+        shadowBlur: 20,
+        shadowOpacity: 0.3,
       });
 
       var pageInner = new Konva.Rect({
         x: marginSize.x,
-        y: documentSize.height * i + marginSize.y,
+        y: (documentSize.height + shadowSize) * i + marginSize.y,
         width: mainTextSize.width,
         height: mainTextSize.height,
         fill: "#fff",
@@ -339,7 +347,7 @@ export const initializeMultiPageRTE = (
 
     var group = new Konva.Group({
       x: marginSize.x,
-      y: documentSize.height * i + marginSize.y,
+      y: (documentSize.height + shadowSize) * i + marginSize.y,
     });
 
     // var group2 = new Konva.Group({
@@ -421,7 +429,7 @@ export const initializeMultiPageRTE = (
 
     highlightGroup = new Konva.Group({
       x: marginSize.x,
-      y: documentSize.height * i + marginSize.y,
+      y: (documentSize.height + shadowSize) * i + marginSize.y,
       name: "selectionGroup",
     });
 

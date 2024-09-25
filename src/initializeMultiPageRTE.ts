@@ -57,7 +57,7 @@ export const initializeMultiPageRTE = (
         // );
         // initialize stage and layers
         stage = new Konva.Stage({
-          container: "container",
+          container: "cmnContainer",
           width: documentSize.width,
           height: documentSize.height * editorInstance.pages.length,
         });
@@ -74,6 +74,8 @@ export const initializeMultiPageRTE = (
       renderTextNodes(stage, layer, jsonByPage);
 
       debounceTimer = setTimeout(() => {
+        // TODO: will need to actually save out formatting data as well
+        // probably restore / save the masterJson, with option to restore from plaintext
         const content = editorInstance.getAllContent();
         debounceCallback(content);
       }, 500);
@@ -476,6 +478,19 @@ export const initializeMultiPageRTE = (
     window.addEventListener("keydown", handleKeydown);
     window.addEventListener("scroll", handleScroll);
     window.addEventListener("scrollend", handleScrollEnd);
+
+    document.getElementById("cmnFontSize")?.addEventListener("change", (e) => {
+      handleFormattingDown({ fontSize: e.target.value });
+    });
+    document.getElementById("cmnBold")?.addEventListener("click", (e) => {
+      handleFormattingDown({ fontWeight: "600" });
+    });
+    document.getElementById("cmnItalic")?.addEventListener("click", (e) => {
+      handleFormattingDown({ italic: true });
+    });
+    document.getElementById("cmnUnderline")?.addEventListener("click", (e) => {
+      handleFormattingDown({ underline: true });
+    });
 
     //   return () => {
     //     window.removeEventListener("keydown", handleKeydown);

@@ -7,7 +7,21 @@
         <meta http-equiv="Expires" content="0" />
     </head>
     <body>
-        <div id="container"></div>
+        <div class="toolbar">
+          <select id="cmnFontSize">
+            <option value="10">10</option>
+            <option value="14">14</option>
+            <option value="16">16</option>
+            <option value="18">18</option>
+            <option value="24">24</option>
+            <option value="36">36</option>
+            <option value="48">48</option>
+          </select>
+          <button id="cmnBold">Bold</button>
+          <button id="cmnItalic">Italic</button>
+          <button id="cmnUnderline">Underline</button>
+        </div>
+        <div id="cmnContainer"></div>
         <script type="module" src="./src/index.ts"></script>
         <style>
             @font-face {
@@ -15,6 +29,10 @@
               src: url("./src/assets/fonts/Inter-Regular.ttf");
               font-weight: normal;
               font-style: normal;
+            }
+            .toolbar {
+              display: flex;
+              flex-direction: row;
             }
           </style>
           <div className="preloadFont" style="font-family: 'Inter'">

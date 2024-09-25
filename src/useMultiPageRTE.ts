@@ -352,6 +352,7 @@ class FormattedPage {
   }
 
   alterFormatting(start: number, end: number, formatChanges: Partial<Style>) {
+    console.info("alterFormatting", start, end);
     // Ensure start and end are within bounds
     start = Math.max(0, Math.min(start, this.content.length));
     end = Math.max(start, Math.min(end, this.content.length));
@@ -368,23 +369,27 @@ class FormattedPage {
       })
     ) as unknown as MappedFormat[];
 
+    console.info("existing formats", existingFormats);
+
     // Remove existing formatting in the range
-    this.formatting.remove([formatStart, formatEnd]);
+    // this.formatting.remove([formatStart, formatEnd]);
 
     // Apply new formatting
     for (const { interval, format } of existingFormats) {
       const newStart = Math.max(interval.low, formatStart);
       const newEnd = Math.min(interval.high, formatEnd);
 
+      console.info("check", formatStart, formatEnd, newStart, newEnd);
+
       if (newStart < newEnd) {
         const updatedFormat = { ...format, ...formatChanges };
-        // console.info(
-        //   "apply new formatting",
-        //   newStart,
-        //   newEnd,
-        //   format,
-        //   updatedFormat
-        // );
+        console.info(
+          "apply new formatting",
+          newStart,
+          newEnd,
+          format,
+          updatedFormat
+        );
         this.formatting.remove(new Interval(newStart, newEnd));
         this.formatting.insert(new Interval(newStart, newEnd), updatedFormat);
       }

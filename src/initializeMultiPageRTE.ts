@@ -35,7 +35,7 @@ export const initializeMultiPageRTE = (
   debounceCallback: () => {}
 ) => {
   const setMasterJson = (json, optionalInsertIndex) => {
-    clearInterval(debounceTimer);
+    clearTimeout(debounceTimer);
 
     masterJson =
       optionalInsertIndex && masterJson

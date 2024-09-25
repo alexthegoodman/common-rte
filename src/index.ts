@@ -21,6 +21,8 @@ let jsonByPage = null;
 
 let stage = null;
 let layer = null;
+// let highlightLayer = null;
+let highlightGroup = null;
 
 const setMasterJson = (json, optionalInsertIndex) => {
   masterJson =
@@ -48,9 +50,11 @@ const setMasterJson = (json, optionalInsertIndex) => {
         height: documentSize.height * editorInstance.pages.length,
       });
 
+      // highlightLayer = new Konva.Layer();
       layer = new Konva.Layer();
 
       stage?.add(layer);
+      // stage?.add(highlightLayer);
     }
 
     stage.height(documentSize.height * editorInstance.pages.length);
@@ -266,6 +270,7 @@ const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
 
     // setSelectedTextNodes((nodes) => [characterId, ...nodes]);
     setLastSelectedNode(characterId);
+    renderSelectionHighlight(stage, layer, jsonByPage);
   }
 };
 const handleTextMouseUp = (e: KonvaEventObject<MouseEvent>) => {
@@ -441,6 +446,8 @@ As VR technology continues to evolve and become more accessible, there are excit
 
 In embracing these future trends and leveraging the power of VR technology in education, we can create transformative, engaging, and effective learning experiences that prepare students for the challenges and opportunities of the digital age. As VR continues to advance and integrate into mainstream education, educators have the opportunity to inspire curiosity, foster creativity, and empower learners to explore the boundless possibilities of knowledge and discovery in the virtual realm. The future of VR education is bright, and with continued innovation and collaboration, we can unlock even greater potentials for immersive learning experiences that shape the next generation of lifelong learners.`;
 
+// const testMarkdown = "Welcome";
+
 useMultiPageRTE(testMarkdown, mainTextSize);
 
 const renderTextNodes = (stg, lyr, jsonByPage) => {
@@ -493,6 +500,11 @@ const renderTextNodes = (stg, lyr, jsonByPage) => {
     y: documentSize.height * i + marginSize.y,
   });
 
+  // var group2 = new Konva.Group({
+  //   x: marginSize.x,
+  //   y: documentSize.height * i + marginSize.y,
+  // });
+
   masterJson.forEach((charText: RenderItem, i) => {
     const charId = `${charText.char}-${charText.page}-${
       totalLengthBeforeIndex + globalIndex
@@ -522,14 +534,70 @@ const renderTextNodes = (stg, lyr, jsonByPage) => {
       // onMouseUp: handleTextMouseUp,
     });
 
-    newText.on("click", handleTextClick);
+    // let testPoint = new Konva.Rect({
+    //   id: "highlight" + i,
+    //   x: charText?.x,
+    //   y: charText?.y,
+    //   width: charText?.width + 2,
+    //   height: 26,
+    //   fill: "blue",
+    // });
 
+    newText.on("click", handleTextClick);
+    newText.on("mousedown", handleTextMouseDown);
+    newText.on("mousemove", handleTextMouseMove);
+    newText.on("mouseup", handleTextMouseUp);
+
+    // group2.add(testPoint);
     group.add(newText);
 
     globalIndex++;
   });
 
   lyr?.add(group);
+  // lyr.add(group2);
+  group.moveUp();
+  // lyr.moveUp();
+  // lyr.zIndex(2);
   // stg?.add(lyr);
   // });
+};
+
+const renderSelectionHighlight = (stg, lyr, jsonByPage) => {
+  // lyr.destroyChildren();
+  highlightGroup?.destroy();
+
+  const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+  const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
+  const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
+
+  let i = roughPage,
+    key = roughPage;
+  const masterJson = jsonByPage[key];
+
+  highlightGroup = new Konva.Group({
+    x: marginSize.x,
+    y: documentSize.height * i + marginSize.y,
+    name: "selectionGroup",
+  });
+
+  masterJson.forEach((charText: RenderItem, i) => {
+    if (i < firstIndex || i > lastIndex) return;
+
+    let newRect = new Konva.Rect({
+      id: "highlight" + i,
+      x: charText?.x,
+      y: charText?.y,
+      width: charText?.width + 2,
+      height: 26,
+      fill: "lightgrey",
+    });
+
+    highlightGroup?.add(newRect);
+  });
+
+  lyr?.add(highlightGroup);
+  highlightGroup.moveDown();
+  // lyr?.moveDown();
+  // lyr.zIndex(1);
 };

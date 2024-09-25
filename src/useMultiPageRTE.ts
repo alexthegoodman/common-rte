@@ -55,6 +55,11 @@ export type DocumentSize = {
   height: number;
 };
 
+export type MarginSize = {
+  x: number;
+  y: number;
+};
+
 const letterSpacing = 1;
 export const defaultStyle: Style = {
   color: "black",
@@ -606,7 +611,6 @@ const getCapHeightPx = (fontData: fontkit.Font, fontSize: number) => {
     fontSize
   );
 };
-
 export class MultiPageEditor {
   public pages: FormattedPage[];
   public size: DocumentSize;
@@ -628,6 +632,15 @@ export class MultiPageEditor {
     this.visibleLines = visibleLines;
     this.scrollPosition = 0;
     this.fontData = fontData;
+  }
+
+  getAllContent() {
+    let content = "";
+    for (let index = 0; index < this.pages.length; index++) {
+      const page = this.pages[index];
+      content += page.content.substring(0, page.content.length);
+    }
+    return content;
   }
 
   // run on scroll?

@@ -592,8 +592,8 @@ class FormattedPage {
 
     // console.info("getFormatAtIndex", index, formats, applicableFormat);
 
-    return applicableFormat?.format; // causes other formatting issues
-    // return defaultStyle;
+    // return applicableFormat?.format; // causes other formatting issues
+    return defaultStyle;
   }
 }
 

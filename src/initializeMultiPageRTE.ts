@@ -288,7 +288,7 @@ export const initializeMultiPageRTE = (
 
     editorInstance?.alterFormatting(
       firstIndex + 1,
-      lastIndex,
+      lastIndex + 1,
       formatting,
       setMasterJson
     );

@@ -501,6 +501,7 @@ class FormattedPage {
         console.warn("no format on char?");
       }
 
+      // if (char === "\n" || format?.isLineBreak) { // TODO: verify that format.isLineBreak is indeed at same index as this char, otherwise may be misplaced
       if (char === "\n") {
         // Move to the next line
         currentX = 0;

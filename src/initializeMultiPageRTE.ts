@@ -287,7 +287,7 @@ export const initializeMultiPageRTE = (
     console.info("formatting on ", firstIndex, lastIndex, formatting);
 
     editorInstance?.alterFormatting(
-      firstIndex,
+      firstIndex + 1,
       lastIndex,
       formatting,
       setMasterJson
@@ -488,7 +488,7 @@ export const initializeMultiPageRTE = (
     window.addEventListener("scrollend", handleScrollEnd);
 
     document.getElementById("cmnFontSize")?.addEventListener("change", (e) => {
-      handleFormattingDown({ fontSize: e.target.value });
+      handleFormattingDown({ fontSize: parseInt(e.target.value) });
     });
     document.getElementById("cmnBold")?.addEventListener("click", (e) => {
       handleFormattingDown({ fontWeight: "600" });

@@ -372,7 +372,7 @@ class FormattedPage {
     // console.info("existing formats", existingFormats);
 
     // Remove existing formatting in the range
-    // this.formatting.remove([formatStart, formatEnd]);
+    this.formatting.remove([formatStart, formatEnd]);
 
     // Apply new formatting
     for (const { interval, format } of existingFormats) {
@@ -409,7 +409,8 @@ class FormattedPage {
     }
 
     // Update layout for the affected range
-    this.updateLayout(formatStart, formatEnd);
+    // this.updateLayout(formatStart, formatEnd);
+    this.updateLayout(0, this.content.length);
   }
 
   getFormattedText(start: number, end: number) {
@@ -494,11 +495,13 @@ class FormattedPage {
       // const format = this.getFormatAtIndex(i + offset, formats);
       const format = this.getFormatAtIndex(i, formats);
 
-      if (!format.fontSize) {
+      // console.info("format at index", format);
+
+      if (!format?.fontSize) {
         console.warn("no format on char?");
       }
 
-      if (char === "\n" || format.isLineBreak) {
+      if (char === "\n" || format?.isLineBreak) {
         // Move to the next line
         currentX = 0;
         currentY += lineHeight;
@@ -509,8 +512,10 @@ class FormattedPage {
       // const fontData = this.getFontData(format.fontFamily);
       const style = {
         ...defaultStyle,
-        fontSize: format.fontSize,
-        fontWeight: format.fontWeight,
+        fontSize: format?.fontSize ? format.fontSize : defaultStyle.fontSize,
+        fontWeight: format?.fontWeight
+          ? format.fontWeight
+          : defaultStyle.fontWeight,
       };
 
       const { width, height } = getCharacterBoundingBox(
@@ -557,27 +562,38 @@ class FormattedPage {
 
   getFormatAtIndex(index: number, formats: MappedFormat[]): Style {
     // Find the last format that starts before or at the given index
-    const applicableFormat = formats.reduce(
-      (prev: MappedFormat, curr: MappedFormat) => {
-        // const [start, end, style] = curr;
-        const { interval, format } = curr;
-        let start = interval.low;
-        let end = interval.high;
+    // const applicableFormat = formats.reduce(
+    //   (prev: MappedFormat, curr: MappedFormat) => {
+    //     // const [start, end, style] = curr;
+    //     const { interval, format } = curr;
+    //     let start = interval.low;
+    //     let end = interval.high;
 
-        if (start <= index && start >= prev.interval.high && end > index) {
-          return curr;
-        }
-        return prev;
-      },
-      { interval: { low: -1, high: -1 }, format: defaultStyle }
-    );
+    //     if (start <= index && start >= prev.interval.high && end > index) {
+    //       return curr;
+    //     }
+    //     return prev;
+    //   },
+    //   { interval: { low: -1, high: -1 }, format: defaultStyle }
+    // );
 
     // return applicableFormat.format;
     // return applicableFormat.interval.low > 0
     //   ? applicableFormat.format
     //   : defaultStyle;
     // testing
-    return defaultStyle;
+
+    const applicableFormats = formats.filter((format) => {
+      if (typeof format !== "undefined") {
+        return format.interval.low <= index && format.interval.high >= index;
+      }
+    });
+    const applicableFormat = applicableFormats[applicableFormats.length - 1];
+
+    // console.info("getFormatAtIndex", index, formats, applicableFormat);
+
+    return applicableFormat?.format; // causes other formatting issues
+    // return defaultStyle;
   }
 }
 
@@ -602,6 +618,8 @@ const getCharacterBoundingBox = (
       height: 5,
     };
   }
+
+  // console.info("getCharacterBoundingBox", character, style.fontSize);
 
   return {
     width: (boundingBox.width / unitsPerEm) * style.fontSize,
@@ -691,12 +709,16 @@ export class MultiPageEditor {
     const formattedText = this.getFormattedText(startIndex, endIndex);
     const layout = this.getLayoutInfo(startIndex, endIndex);
 
-    return this.combineTextAndLayout(
+    const combined = this.combineTextAndLayout(
       formattedText,
       layout,
       startIndex,
       endIndex
     );
+
+    console.info("renderAll", layout, combined);
+
+    return combined;
   }
 
   alterFormatting(
@@ -894,60 +916,6 @@ export class MultiPageEditor {
 
     return renderItems;
   }
-
-  // rebalancePages(startPageIndex: number, initialize = false) {
-  //   performance.mark("rebalance-started");
-
-  //   const pageHeight = this.size.height;
-
-  //   // TODO: may not account for large text pasted in (creating mutliple new pages)
-  //   let totalPages = this.pages.length;
-  //   if (initialize) {
-  //     totalPages =
-  //       Math.round(this.pages[0].content.length / this.avgPageLength) - 1; // 0-indexed
-  //   }
-
-  //   for (let i = startPageIndex; i < totalPages; i++) {
-  //     const currentPage = this.pages[i];
-
-  //     if (typeof currentPage === "undefined") {
-  //       break;
-  //     }
-
-  //     const nextPage =
-  //       this.pages[i + 1] || new FormattedPage(this.size, this.fontData);
-
-  //     currentPage.pageNumber = i; // Update page number
-  //     nextPage.pageNumber = i + 1;
-
-  //     while (currentPage.content.length > this.avgPageLength) {
-  //       const overflowText = currentPage.content.substring(this.avgPageLength);
-  //       const overflowFormatting = currentPage.formatting.search(
-  //         [this.avgPageLength, Infinity],
-  //         (value, key) => ({
-  //           interval: key,
-  //           format: value,
-  //         })
-  //       ) as unknown as MappedFormat[];
-
-  //       currentPage.delete(this.avgPageLength, currentPage.content.length);
-  //       nextPage.insert(0, overflowText, overflowFormatting[0].format);
-  //     }
-
-  //     if (nextPage.content.length > 0 && !this.pages[i + 1]) {
-  //       this.pages.push(nextPage);
-  //     }
-  //   }
-
-  //   // update layouts in staggered manner
-  //   this.pages[startPageIndex].updateLayout(
-  //     0,
-  //     this.pages[startPageIndex].content.length
-  //   );
-
-  //   performance.mark("rebalance-ended");
-  //   performance.measure("rebalance", "rebalance-started", "rebalance-ended");
-  // }
 
   rebalancePages(startPageIndex: number, initialize = false) {
     performance.mark("rebalance-started");

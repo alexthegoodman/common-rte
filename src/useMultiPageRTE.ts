@@ -488,7 +488,7 @@ class FormattedPage {
     let currentPageNumber = this.pageNumber;
     const pageHeight = this.size.height; // Assuming you have a pageHeight property
 
-    // console.info("calculateLayout", text);
+    console.info("calculateLayout", offset, formats);
 
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
@@ -501,7 +501,7 @@ class FormattedPage {
         console.warn("no format on char?");
       }
 
-      if (char === "\n" || format?.isLineBreak) {
+      if (char === "\n") {
         // Move to the next line
         currentX = 0;
         currentY += lineHeight;
@@ -560,40 +560,69 @@ class FormattedPage {
     return layoutInfo;
   }
 
-  getFormatAtIndex(index: number, formats: MappedFormat[]): Style {
-    // Find the last format that starts before or at the given index
-    // const applicableFormat = formats.reduce(
-    //   (prev: MappedFormat, curr: MappedFormat) => {
-    //     // const [start, end, style] = curr;
-    //     const { interval, format } = curr;
-    //     let start = interval.low;
-    //     let end = interval.high;
+  // getFormatAtIndex(index: number, formats: MappedFormat[]): Style {
+  //   // Find the last format that starts before or at the given index
+  //   // const applicableFormat = formats.reduce(
+  //   //   (prev: MappedFormat, curr: MappedFormat) => {
+  //   //     // const [start, end, style] = curr;
+  //   //     const { interval, format } = curr;
+  //   //     let start = interval.low;
+  //   //     let end = interval.high;
 
-    //     if (start <= index && start >= prev.interval.high && end > index) {
-    //       return curr;
-    //     }
-    //     return prev;
-    //   },
-    //   { interval: { low: -1, high: -1 }, format: defaultStyle }
-    // );
+  //   //     if (start <= index && start >= prev.interval.high && end > index) {
+  //   //       return curr;
+  //   //     }
+  //   //     return prev;
+  //   //   },
+  //   //   { interval: { low: -1, high: -1 }, format: defaultStyle }
+  //   // );
 
-    // return applicableFormat.format;
-    // return applicableFormat.interval.low > 0
-    //   ? applicableFormat.format
-    //   : defaultStyle;
-    // testing
+  //   // return applicableFormat.format;
+  //   // return applicableFormat.interval.low > 0
+  //   //   ? applicableFormat.format
+  //   //   : defaultStyle;
+  //   // testing
 
-    const applicableFormats = formats.filter((format) => {
-      if (typeof format !== "undefined") {
-        return format.interval.low <= index && format.interval.high >= index;
+  //   const applicableFormats = formats.filter((format) => {
+  //     if (typeof format !== "undefined") {
+  //       return format.interval.low <= index && format.interval.high >= index;
+  //     }
+  //   });
+  //   const applicableFormat = applicableFormats[applicableFormats.length - 1];
+
+  //   // console.info("getFormatAtIndex", index, formats, applicableFormat);
+
+  //   // return applicableFormat?.format; // causes other formatting issues
+  //   return defaultStyle;
+  // }
+
+  getFormatAtIndex(index: number, formats: MappedFormat[]) {
+    let result = null;
+    let narrowestRange = Infinity;
+
+    for (const obj of formats) {
+      const { low, high } = obj.interval;
+
+      // console.info("checking", low, high, index);
+
+      // Check if the index is within the current interval
+      if (index >= low && index <= high) {
+        const currentRange = high - low;
+
+        // Update the result if this interval is narrower
+        if (currentRange < narrowestRange) {
+          narrowestRange = currentRange;
+          result = obj;
+        }
       }
-    });
-    const applicableFormat = applicableFormats[applicableFormats.length - 1];
+    }
 
-    // console.info("getFormatAtIndex", index, formats, applicableFormat);
+    // if (!result?.format) {
+    //   console.info("!result", result);
+    // }
 
-    // return applicableFormat?.format; // causes other formatting issues
-    return defaultStyle;
+    return result?.format ? result?.format : defaultStyle;
+    // return defaultStyle;
   }
 }
 

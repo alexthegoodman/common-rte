@@ -79,7 +79,7 @@ export const initializeMultiPageRTE = (
         // TODO: will need to actually save out formatting data as well
         // probably restore / save the masterJson, with option to restore from plaintext
         const content = editorInstance.getAllContent();
-        debounceCallback(content);
+        debounceCallback(content, masterJson);
       }, 500);
     }
   };

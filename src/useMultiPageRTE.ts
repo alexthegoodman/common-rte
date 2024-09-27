@@ -415,6 +415,7 @@ class FormattedPage {
 
   getFormattedText(start: number, end: number) {
     const text = this.content.substring(start, end);
+    // console.info("check text", text.includes("\n"));
     const formats = this.formatting.search([start, end], (value, key) => ({
       interval: key,
       format: value,
@@ -488,7 +489,7 @@ class FormattedPage {
     let currentPageNumber = this.pageNumber;
     const pageHeight = this.size.height; // Assuming you have a pageHeight property
 
-    console.info("calculateLayout", offset, formats);
+    // console.info("calculateLayout", offset, formats);
 
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
@@ -712,7 +713,7 @@ export class MultiPageEditor {
 
     const formattedText = this.getFormattedText(startIndex, endIndex);
     const layout = this.getLayoutInfo(startIndex, endIndex);
-    console.info("check items", formattedText, layout);
+    // console.info("check items", formattedText, layout);
     const combined = this.combineTextAndLayout(
       formattedText,
       layout,
@@ -737,6 +738,7 @@ export class MultiPageEditor {
     const endIndex = this.pages.length * this.avgPageLength;
 
     const formattedText = this.getFormattedText(startIndex, endIndex);
+    // console.info("formattedText", formattedText);
     const layout = this.getLayoutInfo(startIndex, endIndex);
 
     const combined = this.combineTextAndLayout(
@@ -858,6 +860,19 @@ export class MultiPageEditor {
     return result;
   }
 
+  getNewlinesTillChar(text: string) {
+    let newlines = 0;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === "\n") {
+        newlines++;
+      } else {
+        break;
+      }
+    }
+    return newlines;
+  }
+
   combineTextAndLayout(
     formattedText: FormattedText[],
     layout: LayoutNode[],
@@ -868,11 +883,6 @@ export class MultiPageEditor {
     let textIndex = 0;
 
     const startPage = this.getPageIndexForGlobalIndex(startIndex);
-    // const localStart = this.getLocalIndex(startIndex, startPage);
-    // const endPage = this.getPageIndexForGlobalIndex(endIndex);
-    // const localEnd = this.getLocalIndex(endIndex, endPage);
-
-    // console.info("formattedText and layout", formattedText, layout);
 
     for (const layoutItem of layout) {
       const { start, end, layoutInfo } = layoutItem;
@@ -892,20 +902,36 @@ export class MultiPageEditor {
         break;
       }
 
-      // const virtualizedStart = Math.max(startIndex - start, 0);
-      // const virtualizedEnd = Math.min(endIndex - start, layoutInfo.length);
-      // const virtualizedStart = startIndex;
-      // const virtualizedEnd = Math.min(endIndex, layoutInfo.length);
       const virtualizedStart = startIndex - startPage * 3000;
       const virtualizedEnd = layoutInfo.length;
 
-      console.info("combineTextAndLayout", virtualizedStart, virtualizedEnd);
-
+      let newlinesEndIndex = 0;
+      let contentIndex = 0;
       for (let i = virtualizedStart; i < virtualizedEnd; i++) {
         const charLayout = layoutInfo[i];
 
         let format: Style | undefined | null;
+
+        if (newlinesEndIndex && contentIndex < newlinesEndIndex) {
+          continue;
+        }
+
+        // const thisChar = this.pages[textIndex].content.substring(i, i + 1);
+        // if (charLayout.char === "\n") {
+        //   continue;
+        // }
+
         // const textItem = formattedText[textIndex];
+        // TODO: get substring of next character and check if newline
+        const nextChars = this.pages[textIndex].content.substring(
+          contentIndex + 1
+        );
+        const newlinesToAdd = this.getNewlinesTillChar(nextChars);
+        if (newlinesToAdd) {
+          newlinesEndIndex = contentIndex + newlinesToAdd;
+          contentIndex += newlinesToAdd;
+        }
+        // console.info("newlinesTOAdd", newlinesToAdd);
         const textItems = this.pages[textIndex].formatting.search(
           [i, i + 1],
           (value, key) => ({
@@ -939,6 +965,23 @@ export class MultiPageEditor {
           format: format,
           page: charLayout.page,
         });
+
+        contentIndex++;
+
+        if (newlinesToAdd) {
+          for (let n = 0; n < newlinesToAdd; n++) {
+            renderItems.push({
+              char: "\n",
+              x: charLayout.x,
+              y: charLayout.y,
+              width: charLayout.width,
+              height: charLayout.height,
+              capHeight: charLayout.capHeight,
+              format: format,
+              page: charLayout.page,
+            });
+          }
+        }
       }
 
       textIndex++;

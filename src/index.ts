@@ -120,7 +120,8 @@ In embracing these future trends and leveraging the power of VR technology in ed
 
 // const testMarkdown = "Welcome";
 
-const debounceCallback = (content) => console.info("debounce content", content);
+const debounceCallback = (content, masterJson) =>
+  console.info("debounce content", masterJson);
 
 initializeMultiPageRTE(
   testMarkdown,

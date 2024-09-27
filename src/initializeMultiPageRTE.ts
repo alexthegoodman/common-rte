@@ -281,7 +281,7 @@ export const initializeMultiPageRTE = (
       return;
     }
 
-    const firstIndex = parseInt(firstSelectedNode.split("-")[2]) + 1;
+    const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
     const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
 
     console.info("formatting on ", firstIndex, lastIndex, formatting);
@@ -416,8 +416,8 @@ export const initializeMultiPageRTE = (
     highlightGroup?.destroy();
 
     const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
-    const firstIndex = parseInt(firstSelectedNode.split("-")[2]) + 2;
-    const lastIndex = parseInt(lastSelectedNode.split("-")[2]) + 1;
+    const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
+    const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
 
     let i = roughPage,
       key = roughPage;
@@ -430,12 +430,16 @@ export const initializeMultiPageRTE = (
     });
 
     // masterJson.forEach((charText: RenderItem, i) => {
+    let contentIndex = 0;
     for (let i = 0; i < masterJson.length; i++) {
       const charText = masterJson[i];
 
       if (charText?.char === "\n") continue;
 
-      if (i < firstIndex || i > lastIndex) continue;
+      contentIndex++;
+
+      if (contentIndex - 1 < firstIndex || contentIndex - 1 > lastIndex)
+        continue;
 
       let newRect = new Konva.Rect({
         id: "highlight" + i,

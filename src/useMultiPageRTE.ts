@@ -491,16 +491,9 @@ class FormattedPage {
 
     // console.info("calculateLayout", offset, formats);
 
+    let contentIndex = 0;
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
-      // const format = this.getFormatAtIndex(i + offset, formats);
-      const format = this.getFormatAtIndex(i, formats);
-
-      // console.info("format at index", format);
-
-      if (!format?.fontSize) {
-        console.warn("no format on char?");
-      }
 
       // if (char === "\n" || format?.isLineBreak) { // TODO: verify that format.isLineBreak is indeed at same index as this char, otherwise may be misplaced
       if (char === "\n") {
@@ -509,6 +502,17 @@ class FormattedPage {
         currentY += lineHeight;
         lineHeight = 0;
         continue;
+      }
+
+      contentIndex++;
+
+      // const format = this.getFormatAtIndex(i + offset, formats);
+      const format = this.getFormatAtIndex(contentIndex, formats);
+
+      // console.info("format at index", format);
+
+      if (!format?.fontSize) {
+        console.warn("no format on char?");
       }
 
       // const fontData = this.getFontData(format.fontFamily);

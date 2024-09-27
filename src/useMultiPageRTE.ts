@@ -261,30 +261,70 @@ class FormattedPage {
     this.pageNumber = pageNumber;
   }
 
+  // insert(index: number, text: string, format: Style) {
+  //   performance.mark("page-insert-started");
+
+  //   const lines = text.split(/\r?\n/);
+  //   let currentIndex = index;
+
+  //   for (let i = 0; i < lines.length; i++) {
+  //     const line = lines[i];
+
+  //     currentIndex = Math.min(currentIndex, this.content.length);
+
+  //     if (line.length > 0) {
+  //       // Insert the line
+  //       this.content.insert(currentIndex, line);
+  //       this.formatting.insert(
+  //         new Interval(currentIndex, currentIndex + line.length),
+  //         format
+  //       );
+  //     }
+
+  //     currentIndex += line.length;
+
+  //     // If this isn't the last line, insert a line break
+  //     if (i < lines.length - 1 || line === "") {
+  //       this.insertLineBreak(currentIndex);
+  //       currentIndex++;
+  //     }
+  //   }
+
+  //   performance.mark("page-insert-ended");
+
+  //   performance.measure(
+  //     "pageInsert",
+  //     "page-insert-started",
+  //     "page-insert-ended"
+  //   );
+  // }
+
   insert(index: number, text: string, format: Style) {
     performance.mark("page-insert-started");
 
     const lines = text.split(/\r?\n/);
     let currentIndex = index;
-
-    // console.info("insert page", text.length);
+    let totalInsertedLength = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
       currentIndex = Math.min(currentIndex, this.content.length);
 
-      // console.info("current length", this.content.length);
-
       if (line.length > 0) {
-        // console.info("line not 0", line);
         // Insert the line
         this.content.insert(currentIndex, line);
-        // this.updateFormatting(currentIndex, line.length, format);
+
+        // Shift existing intervals
+        // this.shiftIntervalsAfter(currentIndex, line.length);
+
+        // Insert new formatting
         this.formatting.insert(
           new Interval(currentIndex, currentIndex + line.length),
           format
         );
+
+        totalInsertedLength += line.length;
       }
 
       currentIndex += line.length;
@@ -292,24 +332,57 @@ class FormattedPage {
       // If this isn't the last line, insert a line break
       if (i < lines.length - 1 || line === "") {
         this.insertLineBreak(currentIndex);
+        // this.shiftIntervalsAfter(currentIndex, 1);
         currentIndex++;
+        totalInsertedLength++;
       }
     }
 
-    // console.info("check length", this.content.length);
-
-    // TODO: update layout in staggered fashion?
-    // go to try on rebalnce pages?
-    // this.updateLayout(index, currentIndex);
-    // this.updateLayout(0, this.content.length);
+    // Shift all intervals after the entire insertion
+    this.shiftIntervalsAfter(index, totalInsertedLength);
 
     performance.mark("page-insert-ended");
-
     performance.measure(
       "pageInsert",
       "page-insert-started",
       "page-insert-ended"
     );
+  }
+
+  shiftIntervalsAfter(index: number, shiftAmount: number) {
+    // Get all intervals
+    const allIntervals = this.formatting.search(
+      [-Infinity, Infinity],
+      (value, key) => ({
+        interval: key,
+        format: value,
+      })
+    ) as unknown as MappedFormat[];
+
+    // Remove all intervals from the tree
+    this.formatting.clear();
+
+    // Shift and reinsert intervals
+    // allIntervals.forEach(([start, end, format]) => {
+    for (const { interval, format } of allIntervals) {
+      let start = interval.low;
+      let end = interval.high;
+
+      if (start >= index) {
+        // Interval starts after or at the index, shift entirely
+        this.formatting.insert(
+          [start + shiftAmount, end + shiftAmount],
+          format
+        );
+      } else if (end > index) {
+        // Interval overlaps with the index, extend the end
+        this.formatting.insert([start, end + shiftAmount], format);
+      } else {
+        // Interval is before the index, no change needed
+        this.formatting.insert([start, end], format);
+      }
+    }
+    // });
   }
 
   insertLineBreak(index: number) {

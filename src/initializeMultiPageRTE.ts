@@ -281,14 +281,14 @@ export const initializeMultiPageRTE = (
       return;
     }
 
-    const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
+    const firstIndex = parseInt(firstSelectedNode.split("-")[2]) + 1;
     const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
 
     console.info("formatting on ", firstIndex, lastIndex, formatting);
 
     editorInstance?.alterFormatting(
-      firstIndex + 1,
-      lastIndex + 1,
+      firstIndex,
+      lastIndex,
       formatting,
       setMasterJson
     );
@@ -355,7 +355,13 @@ export const initializeMultiPageRTE = (
     //   y: documentSize.height * i + marginSize.y,
     // });
 
-    masterJson.forEach((charText: RenderItem, i) => {
+    for (let i = 0; i < masterJson.length; i++) {
+      const charText = masterJson[i];
+
+      if (charText?.char === "\n") {
+        continue;
+      }
+
       const charId = `${charText.char}-${charText.page}-${
         totalLengthBeforeIndex + globalIndex
       }`;
@@ -386,25 +392,15 @@ export const initializeMultiPageRTE = (
         // onMouseUp: handleTextMouseUp,
       });
 
-      // let testPoint = new Konva.Rect({
-      //   id: "highlight" + i,
-      //   x: charText?.x,
-      //   y: charText?.y,
-      //   width: charText?.width + 2,
-      //   height: 26,
-      //   fill: "blue",
-      // });
-
       newText.on("click", handleTextClick);
       newText.on("mousedown", handleTextMouseDown);
       newText.on("mousemove", handleTextMouseMove);
       newText.on("mouseup", handleTextMouseUp);
 
-      // group2.add(testPoint);
       group.add(newText);
 
       globalIndex++;
-    });
+    }
 
     lyr?.add(group);
     // lyr.add(group2);
@@ -420,8 +416,8 @@ export const initializeMultiPageRTE = (
     highlightGroup?.destroy();
 
     const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
-    const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
-    const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
+    const firstIndex = parseInt(firstSelectedNode.split("-")[2]) + 2;
+    const lastIndex = parseInt(lastSelectedNode.split("-")[2]) + 1;
 
     let i = roughPage,
       key = roughPage;
@@ -433,8 +429,13 @@ export const initializeMultiPageRTE = (
       name: "selectionGroup",
     });
 
-    masterJson.forEach((charText: RenderItem, i) => {
-      if (i < firstIndex || i > lastIndex) return;
+    // masterJson.forEach((charText: RenderItem, i) => {
+    for (let i = 0; i < masterJson.length; i++) {
+      const charText = masterJson[i];
+
+      if (charText?.char === "\n") continue;
+
+      if (i < firstIndex || i > lastIndex) continue;
 
       let newRect = new Konva.Rect({
         id: "highlight" + i,
@@ -446,7 +447,8 @@ export const initializeMultiPageRTE = (
       });
 
       highlightGroup?.add(newRect);
-    });
+    }
+    // });
 
     lyr?.add(highlightGroup);
     highlightGroup.moveDown();

@@ -906,7 +906,7 @@ export class MultiPageEditor {
       const virtualizedEnd = layoutInfo.length;
 
       let newlinesEndIndex = 0;
-      let contentIndex = 0;
+      let contentIndex = 0; // TODO: need to use some sort of contentIndex in other places as well?
       for (let i = virtualizedStart; i < virtualizedEnd; i++) {
         const charLayout = layoutInfo[i];
 

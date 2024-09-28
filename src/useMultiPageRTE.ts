@@ -309,42 +309,54 @@ class FormattedPage {
   // }
 
   insert(index: number, text: string, format: Style) {
+    // if (text === "\n") {
+    //   console.info("text is newline");
+    // }
+
     performance.mark("page-insert-started");
 
     const lines = text.split(/\r?\n/);
     let currentIndex = index;
     let totalInsertedLength = 0;
 
+    let linesFinished = 0; // one newline for each line
+
+    // console.info("text lines", text, lines.length);
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
       currentIndex = Math.min(currentIndex, this.content.length);
 
-      if (line.length > 0) {
-        // Insert the line
-        this.content.insert(currentIndex, line);
+      if (text !== "\n") {
+        if (line.length > 0) {
+          // Insert the line
+          this.content.insert(currentIndex, line);
 
-        // Shift existing intervals
-        // this.shiftIntervalsAfter(currentIndex, line.length);
+          // Shift existing intervals
+          // this.shiftIntervalsAfter(currentIndex, line.length);
 
-        // Insert new formatting
-        this.formatting.insert(
-          new Interval(currentIndex, currentIndex + line.length),
-          format
-        );
+          // Insert new formatting
+          this.formatting.insert(
+            new Interval(currentIndex, currentIndex + line.length),
+            format
+          );
 
-        totalInsertedLength += line.length;
+          totalInsertedLength += line.length;
+        }
       }
 
       currentIndex += line.length;
 
       // If this isn't the last line, insert a line break
-      if (i < lines.length - 1 || line === "") {
-        this.insertLineBreak(currentIndex);
+      if (i < lines.length - 1) {
+        this.insertLineBreak(currentIndex, currentIndex + linesFinished);
         // this.shiftIntervalsAfter(currentIndex, 1);
         currentIndex++;
         totalInsertedLength++;
       }
+
+      linesFinished++;
     }
 
     // Shift all intervals after the entire insertion
@@ -394,11 +406,13 @@ class FormattedPage {
     // });
   }
 
-  insertLineBreak(index: number) {
+  insertLineBreak(index: number, nlIndex: number) {
+    // console.info("insertLineBreak", index, nlIndex);
     // Insert a special character or object to represent a line break
     index = Math.min(index, this.content.length);
+    nlIndex = Math.min(nlIndex, this.content.length);
     // console.info("inserting line break");
-    this.content.insert(index, "\n");
+    this.content.insert(nlIndex, "\n");
     // this.content.insert(index + 1, "\n");
     // this.updateFormatting(index, 1, { isLineBreak: true });
     this.formatting.insert(new Interval(index, index + 1), {

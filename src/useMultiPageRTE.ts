@@ -562,7 +562,7 @@ class FormattedPage {
     let currentPageNumber = this.pageNumber;
     const pageHeight = this.size.height; // Assuming you have a pageHeight property
 
-    // console.info("calculateLayout", offset, formats);
+    console.info("calculateLayout", pageNumber);
 
     let contentIndex = 0;
     for (let i = 0; i < text.length; i++) {
@@ -765,6 +765,10 @@ export class MultiPageEditor {
     this.fontData = fontData;
   }
 
+  // TODO: getRenderChunks creates RenderItems as chunks of text, split by formatting AND newlines
+  // could be huge performance boost
+  // problem is, these chunks actually need to be passed to layout, so fontkit runs less, in theory
+
   getAllContent() {
     let content = "";
     for (let index = 0; index < this.pages.length; index++) {
@@ -892,12 +896,18 @@ export class MultiPageEditor {
     clearTimeout(this.rebalanceDebounce);
     clearTimeout(this.rebalanceDebounceStaggered);
 
+    if (initialize) {
+      this.updatePageLayouts(pageIndex); // run again on itialize
+    }
     this.rebalancePages(pageIndex, initialize);
     // const { startIndex, combined } = this.renderVisible();
     // console.info("renderAndRebalance", startIndex, combined);
     // setMasterJson(combined, startIndex);
 
-    // this.updatePageLayouts(pageIndex); // expensive operation
+    if (initialize) {
+      this.updatePageLayouts(pageIndex); // run again on itialize
+    }
+
     const renderableAll = this.renderAll();
     setMasterJson(renderableAll);
 
@@ -1067,6 +1077,19 @@ export class MultiPageEditor {
     return renderItems;
   }
 
+  getTextLength(beforePage?: number) {
+    let total = 0;
+    for (let i = 0; i < this.pages.length; i++) {
+      const page = this.pages[i];
+      if (typeof beforePage !== "undefined" && i < beforePage) {
+        total += page.content.length;
+      } else if (typeof beforePage === "undefined") {
+        total += page.content.length;
+      }
+    }
+    return total;
+  }
+
   rebalancePages(startPageIndex: number, initialize = false) {
     performance.mark("rebalance-started");
 
@@ -1106,9 +1129,54 @@ export class MultiPageEditor {
         0,
         i
       );
+      const nextPageStartIndex = layoutInfo?.findIndex(
+        (info) => info?.page > i
+      );
 
-      // Find the index where the next page starts
-      const nextPageStartIndex = layoutInfo.findIndex((info) => info.page > i);
+      // // // at least need to query all page layouts to get the index next
+      // const layoutInfos = this.pages
+      //   .map((page) => {
+      //     return page.layout.query(-Infinity, Infinity);
+      //   })
+      //   .flat();
+
+      // const textBeforeCurrent = this.getTextLength(i);
+      // const testinfo = this.getLayoutInfo(
+      //   textBeforeCurrent,
+      //   textBeforeCurrent + currentPage.content.length
+      // );
+
+      // console.info(
+      //   "layoutInfos",
+      //   textBeforeCurrent,
+      //   currentPage.content.length,
+      //   testinfo
+      // );
+
+      // // Find the index where the next page starts
+      // // const nextPageStartIndex = layoutInfos[0]?.layoutInfo?.findIndex(
+      // //   (info) => info?.page > i
+      // // );
+      // let nextPageStartIndex = -1;
+      // let count = 0;
+      // for (let i = 0; i < layoutInfos.length; i++) {
+      //   const layout = layoutInfos[i];
+
+      //   if (nextPageStartIndex > 0) {
+      //     break;
+      //   }
+
+      //   for (let x = 0; x < layout?.layoutInfo?.length; x++) {
+      //     const info = layout.layoutInfo[x];
+
+      //     if (info.page > i) {
+      //       nextPageStartIndex = count;
+      //       break;
+      //     }
+
+      //     count++;
+      //   }
+      // }
 
       if (nextPageStartIndex !== -1) {
         const overflowText = currentPage.content.substring(nextPageStartIndex);

@@ -549,14 +549,26 @@ class FormattedPage {
     return result;
   }
 
-  updateLayout(start: number, end: number) {
+  updateLayout(
+    start: number,
+    end: number,
+    insertLength: number,
+    insertIndex: number
+  ) {
     const text = this.content.substring(start, end);
     const formats = this.formatting.search([start, end], (value, key) => ({
       interval: key,
       format: value,
     })) as unknown as MappedFormat[];
     // console.info("updateLayout: ", text, formats, start);
-    const layoutInfo = this.calculateLayout(text, formats, start, 0);
+    const layoutInfo = this.calculateLayout(
+      text,
+      formats,
+      start,
+      0,
+      insertLength,
+      insertIndex
+    );
     // console.info("updateLayout: ", start, end);
     this.layout.update(start, end, layoutInfo);
   }
@@ -565,7 +577,9 @@ class FormattedPage {
     text: string,
     formats: MappedFormat[],
     offset: number,
-    pageNumber: number
+    pageNumber: number,
+    insertLength: number,
+    insertIndex: number
   ) {
     let layoutInfo = [];
     let currentX = 0;
@@ -595,7 +609,10 @@ class FormattedPage {
       // const format = this.getFormatAtIndex(i + offset, formats);
       const format = this.getFormatAtIndex(contentIndex - 1, formats);
 
-      const prevLayoutInfo = this.layout.queryInfos(contentIndex - 1);
+      let layoutIndex =
+        contentIndex > insertIndex ? contentIndex - insertLength : contentIndex; // minus because from old layout
+
+      const prevLayoutInfo = this.layout.queryInfos(layoutIndex - 1);
 
       // console.info("layout at index", prevLayoutInfo);
 
@@ -615,7 +632,20 @@ class FormattedPage {
       let cachedWidth = 0;
       let cachedHeight = 0;
 
+      // if (prevLayoutInfo && prevLayoutInfo.char !== char) {
+      //   console.info(
+      //     "no match on layout ",
+      //     layoutIndex,
+      //     contentIndex,
+      //     insertLength,
+      //     insertIndex,
+      //     char,
+      //     prevLayoutInfo
+      //   );
+      // }
+
       // yes, this caching helps when the chars match, but frequently they don't when a new char is inserted
+      // in theory, by providing length of text inserted and insertion index, we can be more likely to grab the cached value
       if (prevLayoutInfo && prevLayoutInfo.char === char) {
         // console.info("prevLayoutInfo", char, prevLayoutInfo);
 
@@ -947,7 +977,13 @@ export class MultiPageEditor {
 
     this.pages[pageIndex].insert(localIndex, text, format);
 
-    this.renderAndRebalance(pageIndex, setMasterJson, initialize);
+    this.renderAndRebalance(
+      pageIndex,
+      setMasterJson,
+      initialize,
+      text.length,
+      localIndex
+    );
 
     performance.mark("insert-ended");
 
@@ -957,7 +993,9 @@ export class MultiPageEditor {
   renderAndRebalance(
     pageIndex: number,
     setMasterJson: any,
-    initialize = false
+    initialize = false,
+    insertLength: number,
+    insertIndex: number
   ) {
     clearTimeout(this.rebalanceDebounce);
     clearTimeout(this.rebalanceDebounceStaggered);
@@ -965,7 +1003,13 @@ export class MultiPageEditor {
     if (initialize) {
       this.updatePageLayouts(pageIndex); // run again on itialize
     }
-    this.rebalancePages(pageIndex, initialize);
+
+    if (initialize) {
+      this.rebalancePages(pageIndex, initialize);
+    } else {
+      this.rebalancePages(pageIndex, initialize, insertLength, insertIndex);
+    }
+
     // const { startIndex, combined } = this.renderVisible();
     // console.info("renderAndRebalance", startIndex, combined);
     // setMasterJson(combined, startIndex);
@@ -1156,7 +1200,12 @@ export class MultiPageEditor {
     return total;
   }
 
-  rebalancePages(startPageIndex: number, initialize = false) {
+  rebalancePages(
+    startPageIndex: number,
+    initialize = false,
+    insertLength: number,
+    insertIndex: number
+  ) {
     performance.mark("rebalance-started");
 
     const pageHeight = this.size.height;
@@ -1193,7 +1242,9 @@ export class MultiPageEditor {
           })
         ) as unknown as MappedFormat[],
         0,
-        i
+        i,
+        insertLength,
+        insertIndex
       );
       const nextPageStartIndex = layoutInfo?.findIndex(
         (info) => info?.page > i
@@ -1266,7 +1317,9 @@ export class MultiPageEditor {
     // update layouts in staggered manner
     this.pages[startPageIndex].updateLayout(
       0,
-      this.pages[startPageIndex].content.length
+      this.pages[startPageIndex].content.length,
+      insertLength,
+      insertIndex
     );
 
     performance.mark("rebalance-ended");

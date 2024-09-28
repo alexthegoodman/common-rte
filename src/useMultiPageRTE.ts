@@ -120,7 +120,7 @@ class LayoutTree {
 
   queryInfos(index: number) {
     const query = this.root.query(0, this.root.max);
-    // console.info("queryInfos", this.root.max, query);
+    // console.info("queryInfos", query);
     return query[0].layoutInfo ? query[0].layoutInfo[index] : null;
   }
 }
@@ -612,7 +612,8 @@ class FormattedPage {
       let layoutIndex =
         contentIndex > insertIndex ? contentIndex - insertLength : contentIndex; // minus because from old layout
 
-      const prevLayoutInfo = this.layout.queryInfos(layoutIndex - 1);
+      let prevLayoutInfo = this.layout.queryInfos(layoutIndex - 1);
+      let prevLayoutInfoCheck = this.layout.queryInfos(contentIndex - 1);
 
       // console.info("layout at index", prevLayoutInfo);
 
@@ -632,15 +633,21 @@ class FormattedPage {
       let cachedWidth = 0;
       let cachedHeight = 0;
 
+      if (prevLayoutInfoCheck && prevLayoutInfoCheck.char === char) {
+        prevLayoutInfo = prevLayoutInfoCheck;
+      }
+
       // if (prevLayoutInfo && prevLayoutInfo.char !== char) {
       //   console.info(
       //     "no match on layout ",
+      //     currentPageNumber,
       //     layoutIndex,
       //     contentIndex,
       //     insertLength,
       //     insertIndex,
       //     char,
-      //     prevLayoutInfo
+      //     prevLayoutInfo,
+      //     prevLayoutInfoCheck
       //   );
       // }
 
@@ -1329,10 +1336,11 @@ export class MultiPageEditor {
   updatePageLayouts(startPageIndex: number) {
     console.info("updatePageLayouts");
     for (let i = startPageIndex + 1; i < this.pages.length; i++) {
-      this.pages[i].updateLayout(
-        this.pages[i].content.length - this.avgPageLength,
-        this.pages[i].content.length
-      );
+      // this.pages[i].updateLayout(
+      //   this.pages[i].content.length - this.avgPageLength,
+      //   this.pages[i].content.length
+      // );
+      this.pages[i].updateLayout(0, this.pages[i].content.length);
     }
   }
 

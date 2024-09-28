@@ -117,6 +117,12 @@ class LayoutTree {
   query(start: number, end: number) {
     return this.root.query(start, end);
   }
+
+  queryInfos(index: number) {
+    const query = this.root.query(0, this.root.max);
+    // console.info("queryInfos", this.root.max, query);
+    return query[0].layoutInfo ? query[0].layoutInfo[index] : null;
+  }
 }
 
 class LayoutNode {
@@ -190,15 +196,18 @@ class LayoutNode {
       // return [
       //   { start: this.start, end: this.end, layoutInfo: this.layoutInfo },
       // ];
+      // console.info("leaf");
       return [new LayoutNode(this.start, this.end, this.layoutInfo)];
     }
 
     // Recurse on children
     let result: LayoutNode[] = [];
     if (this.left) {
+      // console.info("has left");
       result = result.concat(this.left.query(start, end));
     }
     if (this.right) {
+      // console.info("has right");
       result = result.concat(this.right.query(start, end));
     }
 
@@ -584,9 +593,11 @@ class FormattedPage {
       contentIndex++;
 
       // const format = this.getFormatAtIndex(i + offset, formats);
-      const format = this.getFormatAtIndex(contentIndex, formats);
+      const format = this.getFormatAtIndex(contentIndex - 1, formats);
 
-      // console.info("format at index", format);
+      const prevLayoutInfo = this.layout.queryInfos(contentIndex - 1);
+
+      // console.info("layout at index", prevLayoutInfo);
 
       if (!format?.fontSize) {
         console.warn("no format on char?");
@@ -601,15 +612,57 @@ class FormattedPage {
           : defaultStyle.fontWeight,
       };
 
-      const { width, height } = getCharacterBoundingBox(
-        this.fontData,
-        char,
-        style
-      );
+      let cachedWidth = 0;
+      let cachedHeight = 0;
+
+      // yes, this caching helps when the chars match, but frequently they don't when a new char is inserted
+      if (prevLayoutInfo && prevLayoutInfo.char === char) {
+        // console.info("prevLayoutInfo", char, prevLayoutInfo);
+
+        if (
+          prevLayoutInfo?.format.color !== style.color ||
+          prevLayoutInfo?.format.fontFamily !== style.fontFamily ||
+          prevLayoutInfo?.format.fontSize !== style.fontSize ||
+          prevLayoutInfo?.format.fontWeight !== style.fontWeight ||
+          prevLayoutInfo?.format.isLineBreak !== style.isLineBreak ||
+          prevLayoutInfo?.format.italic !== style.italic ||
+          prevLayoutInfo?.format.underline !== style.underline
+        ) {
+          // console.info(
+          //   "difference detected, get new width and height",
+          //   prevLayoutInfo,
+          //   cachedWidth,
+          //   cachedHeight
+          // );
+
+          const { width, height } = getCharacterBoundingBox(
+            this.fontData,
+            char,
+            style
+          );
+
+          cachedWidth = width;
+          cachedHeight = height;
+        } else {
+          // no difference detected, uses cached dimensions
+          cachedWidth = prevLayoutInfo?.width;
+          cachedHeight = prevLayoutInfo?.height;
+        }
+      } else {
+        const { width, height } = getCharacterBoundingBox(
+          this.fontData,
+          char,
+          style
+        );
+
+        cachedWidth = width;
+        cachedHeight = height;
+      }
+
       const capHeight = getCapHeightPx(this.fontData, style.fontSize);
 
       // Check if we need to wrap to the next line
-      if (currentX + width > this.size.width) {
+      if (currentX + cachedWidth > this.size.width) {
         currentX = 0;
         currentY += lineHeight;
         lineHeight = 0;
@@ -627,14 +680,14 @@ class FormattedPage {
         char,
         x: currentX ? currentX + letterSpacing : 0,
         y: currentY,
-        width,
-        height,
+        width: cachedWidth,
+        height: cachedHeight,
         capHeight,
         format,
         page: currentPageNumber,
       });
 
-      currentX += width + letterSpacing;
+      currentX += cachedWidth + letterSpacing;
       lineHeight = Math.max(lineHeight, capHeight);
     }
 

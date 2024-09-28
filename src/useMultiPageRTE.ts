@@ -600,7 +600,7 @@ class FormattedPage {
         // Move to the next line
         currentX = 0;
         currentY += lineHeight;
-        lineHeight = 0;
+        // lineHeight = 0;
         continue;
       }
 

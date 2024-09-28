@@ -398,9 +398,13 @@ class FormattedPage {
     });
   }
 
-  delete(start: number, end: number) {
+  // nl for newlines because content contains newlines
+  delete(start: number, end: number, nlStart: number, nlEnd: number) {
     const deleteLength = end - start;
-    this.content.remove(start, end);
+    this.content.remove(
+      typeof nlStart !== "undefined" ? nlStart : start,
+      typeof nlEnd !== "undefined" ? nlEnd : end
+    );
     this.formatting.remove([start, end]);
     this.adjustFormatting(start, -deleteLength);
   }
@@ -639,42 +643,6 @@ class FormattedPage {
     return layoutInfo;
   }
 
-  // getFormatAtIndex(index: number, formats: MappedFormat[]): Style {
-  //   // Find the last format that starts before or at the given index
-  //   // const applicableFormat = formats.reduce(
-  //   //   (prev: MappedFormat, curr: MappedFormat) => {
-  //   //     // const [start, end, style] = curr;
-  //   //     const { interval, format } = curr;
-  //   //     let start = interval.low;
-  //   //     let end = interval.high;
-
-  //   //     if (start <= index && start >= prev.interval.high && end > index) {
-  //   //       return curr;
-  //   //     }
-  //   //     return prev;
-  //   //   },
-  //   //   { interval: { low: -1, high: -1 }, format: defaultStyle }
-  //   // );
-
-  //   // return applicableFormat.format;
-  //   // return applicableFormat.interval.low > 0
-  //   //   ? applicableFormat.format
-  //   //   : defaultStyle;
-  //   // testing
-
-  //   const applicableFormats = formats.filter((format) => {
-  //     if (typeof format !== "undefined") {
-  //       return format.interval.low <= index && format.interval.high >= index;
-  //     }
-  //   });
-  //   const applicableFormat = applicableFormats[applicableFormats.length - 1];
-
-  //   // console.info("getFormatAtIndex", index, formats, applicableFormat);
-
-  //   // return applicableFormat?.format; // causes other formatting issues
-  //   return defaultStyle;
-  // }
-
   getFormatAtIndex(index: number, formats: MappedFormat[]) {
     let result = null;
     let narrowestRange = Infinity;
@@ -778,6 +746,47 @@ export class MultiPageEditor {
     return content;
   }
 
+  delete(globalStart: number, globalEnd: number, setMasterJson: any) {
+    let startPageIndex = this.getPageIndexForGlobalIndex(globalStart, false);
+    let startLocalIndex = this.getLocalIndex(
+      globalStart,
+      startPageIndex,
+      false
+    );
+    let adjustedStartLocal = this.getLocalIndex(
+      globalStart,
+      startPageIndex,
+      true
+    );
+
+    let endPageIndex = this.getPageIndexForGlobalIndex(globalEnd, false);
+    let endLocalIndex = this.getLocalIndex(globalEnd, endPageIndex, false);
+    let adjustedEndLocal = this.getLocalIndex(globalEnd, endPageIndex, true);
+
+    console.info(
+      "check indexes",
+      startPageIndex,
+      startLocalIndex,
+      adjustedStartLocal,
+      endPageIndex,
+      endLocalIndex,
+      adjustedEndLocal
+    );
+
+    this.pages[startPageIndex].delete(
+      startLocalIndex,
+      endLocalIndex,
+      adjustedStartLocal,
+      adjustedEndLocal
+    );
+
+    console.info("deleted");
+
+    this.renderAndRebalance(startPageIndex, setMasterJson, false);
+  }
+
+  addNewlinesToIndex(globalIndex: number) {}
+
   // run on scroll?
   // TODO: account for newlines?
   renderVisible() {
@@ -840,11 +849,15 @@ export class MultiPageEditor {
     formatChanges: Partial<Style>,
     setMasterJson: any
   ) {
-    let startPageIndex = this.getPageIndexForGlobalIndex(globalStart);
-    let startLocalIndex = this.getLocalIndex(globalStart, startPageIndex);
+    let startPageIndex = this.getPageIndexForGlobalIndex(globalStart, false);
+    let startLocalIndex = this.getLocalIndex(
+      globalStart,
+      startPageIndex,
+      false
+    );
 
-    let endPageIndex = this.getPageIndexForGlobalIndex(globalEnd);
-    let endLocalIndex = this.getLocalIndex(globalEnd, endPageIndex);
+    let endPageIndex = this.getPageIndexForGlobalIndex(globalEnd, false);
+    let endLocalIndex = this.getLocalIndex(globalEnd, endPageIndex, false);
 
     // console.info(
     //   "alter formatting ",
@@ -1208,6 +1221,7 @@ export class MultiPageEditor {
   }
 
   updatePageLayouts(startPageIndex: number) {
+    console.info("updatePageLayouts");
     for (let i = startPageIndex + 1; i < this.pages.length; i++) {
       this.pages[i].updateLayout(
         this.pages[i].content.length - this.avgPageLength,
@@ -1216,24 +1230,81 @@ export class MultiPageEditor {
     }
   }
 
-  getPageIndexForGlobalIndex(globalIndex: number) {
+  // getPageIndexForGlobalIndex(globalIndex: number) {
+  //   let accumIndex = 0;
+  //   for (let i = 0; i < this.pages.length; i++) {
+  //     if (accumIndex + this.pages[i].content.length > globalIndex) {
+  //       return i;
+  //     }
+  //     accumIndex += this.pages[i].content.length;
+  //   }
+  //   return this.pages.length - 1; // need page index, not number
+  //   // return this.pages.length;
+  // }
+
+  // getLocalIndex(globalIndex: number, pageIndex: number) {
+  //   let accumIndex = 0;
+  //   for (let i = 0; i < pageIndex; i++) {
+  //     accumIndex += this.pages[i].content.length;
+  //   }
+  //   return globalIndex - accumIndex;
+  // }
+
+  getPageIndexForGlobalIndex(globalIndex: number, withNewlines = true) {
     let accumIndex = 0;
     for (let i = 0; i < this.pages.length; i++) {
-      if (accumIndex + this.pages[i].content.length > globalIndex) {
+      let contentLength = this.pages[i].content.length;
+      if (!withNewlines) {
+        let content = this.pages[i].content.substring(
+          0,
+          this.pages[i].content.length
+        );
+        content = content.split("\n").join("");
+        contentLength = content.length;
+      }
+      if (accumIndex + contentLength > globalIndex) {
         return i;
       }
-      accumIndex += this.pages[i].content.length;
+      accumIndex += contentLength;
     }
     return this.pages.length - 1; // need page index, not number
     // return this.pages.length;
   }
 
-  getLocalIndex(globalIndex: number, pageIndex: number) {
+  getLocalIndex(globalIndex: number, pageIndex: number, withNewlines = true) {
     let accumIndex = 0;
-    for (let i = 0; i < pageIndex; i++) {
-      accumIndex += this.pages[i].content.length;
+    if (!pageIndex && withNewlines) {
+      let content = this.pages[0].content.substring(0, globalIndex);
+      let totalNewlines = 0;
+
+      for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+
+        if (char === "\n") {
+          totalNewlines++;
+        }
+        if (i > globalIndex) {
+          continue;
+        }
+      }
+
+      return globalIndex + totalNewlines;
+    } else {
+      for (let i = 0; i < pageIndex; i++) {
+        if (withNewlines) {
+          accumIndex += this.pages[i].content.length;
+        } else {
+          let content = this.pages[i].content.substring(
+            0,
+            this.pages[i].content.length
+          );
+          content = content.split("\n").join("");
+          console.info("content includes", content.includes("\n"));
+          accumIndex += content.length;
+        }
+      }
+      return globalIndex - accumIndex;
     }
-    return globalIndex - accumIndex;
   }
 
   getFormattedText(startIndex: number, endIndex: number) {

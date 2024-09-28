@@ -78,7 +78,7 @@ export const initializeMultiPageRTE = (
       debounceTimer = setTimeout(() => {
         // TODO: will need to actually save out formatting data as well
         // probably restore / save the masterJson, with option to restore from plaintext
-        editorInstance.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
+        // editorInstance.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
         const content = editorInstance.getAllContent();
         debounceCallback(content, masterJson);
       }, 500);
@@ -120,6 +120,20 @@ export const initializeMultiPageRTE = (
           break;
         case "Backspace":
           {
+            if (!editorActive) {
+              console.error("No editor");
+            }
+
+            console.info("backspace");
+
+            editorInstance?.delete(
+              window.__canvasRTEInsertCharacterIndex,
+              window.__canvasRTEInsertCharacterIndex + 1,
+              setMasterJson
+            );
+
+            window.__canvasRTEInsertCharacterIndex =
+              window.__canvasRTEInsertCharacterIndex - 1;
           }
           break;
         case "Delete":

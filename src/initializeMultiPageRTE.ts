@@ -8,6 +8,7 @@ import {
   MultiPageEditor,
 } from "./useMultiPageRTE";
 import Konva from "konva";
+import Picker from "vanilla-picker";
 
 let fontData = null;
 let masterJson = null;
@@ -537,6 +538,15 @@ export const initializeMultiPageRTE = (
     document.getElementById("cmnUnderline")?.addEventListener("click", (e) => {
       handleFormattingDown({ underline: true });
     });
+
+    const parent = document.querySelector("#cmnColor");
+    const picker = new Picker(parent);
+
+    // You can do what you want with the chosen color using two callbacks: onChange and onDone.
+    picker.onDone = function (color) {
+      // parent.style.background = color.rgbaString;
+      handleFormattingDown({ color: color.rgbaString });
+    };
 
     //   return () => {
     //     window.removeEventListener("keydown", handleKeydown);

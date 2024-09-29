@@ -6,6 +6,7 @@ import {
   DocumentSize,
   loadFont,
   MultiPageEditor,
+  VisualKinds,
 } from "./useMultiPageRTE";
 import Konva from "konva";
 import Picker from "vanilla-picker";
@@ -22,7 +23,9 @@ let jsonByPage = null;
 let stage = null;
 let layer = null;
 // let highlightLayer = null;
+let visualsLayer = null;
 let highlightGroup = null;
+let visualsTransformer = null;
 
 let isSelected = false;
 
@@ -66,10 +69,14 @@ export const initializeMultiPageRTE = (
         });
 
         // highlightLayer = new Konva.Layer();
+        visualsLayer = new Konva.Layer();
         layer = new Konva.Layer();
 
         stage?.add(layer);
-        // stage?.add(highlightLayer);
+        stage?.add(visualsLayer);
+
+        visualsTransformer = new Konva.Transformer();
+        visualsLayer.add(visualsTransformer);
       }
 
       stage.height(documentSize.height * editorInstance.pages.length);
@@ -492,6 +499,31 @@ export const initializeMultiPageRTE = (
     // lyr.zIndex(1);
   };
 
+  const renderVisuals = () => {
+    console.info("renderVisuals");
+    // visualsLayer?.destroyChildren();
+
+    let allVisualsAdded = [];
+    for (let x = 0; x < editorInstance.visuals.length; x++) {
+      const pageVisual = editorInstance.visuals[x];
+
+      if (pageVisual.kind === VisualKinds.circle) {
+        console.info("adding circle...");
+
+        let numVis = allVisualsAdded.length;
+        allVisualsAdded[numVis] = new Konva.Circle({
+          ...pageVisual,
+          draggable: true,
+        });
+
+        visualsLayer.add(allVisualsAdded[numVis]);
+      }
+    }
+
+    visualsTransformer.nodes(allVisualsAdded);
+    visualsLayer.batchDraw();
+  };
+
   const getJsonByPage = (masterJson) => {
     return masterJson?.reduce((acc, char) => {
       // if (!char.page) return acc;
@@ -542,12 +574,32 @@ export const initializeMultiPageRTE = (
     const parent = document.querySelector("#cmnColor");
     const picker = new Picker(parent);
 
-    // You can do what you want with the chosen color using two callbacks: onChange and onDone.
     picker.onDone = function (color) {
-      // parent.style.background = color.rgbaString;
       handleFormattingDown({ color: color.rgbaString });
     };
 
+    document.getElementById("cmnCircle")?.addEventListener("click", (e) => {
+      editorInstance.addVisual({
+        kind: VisualKinds.circle,
+        fill: "red",
+      });
+
+      renderVisuals();
+    });
+
+    document
+      .getElementById("cmnRectangle")
+      ?.addEventListener("click", (e) => {});
+
+    document
+      .getElementById("cmnImageButton")
+      ?.addEventListener("click", (e) => {});
+
+    document
+      .getElementById("cmnImageFile")
+      ?.addEventListener("change", (e) => {});
+
+    // TODO: need some detach function for use in React side when remounting?
     //   return () => {
     //     window.removeEventListener("keydown", handleKeydown);
     //     window.removeEventListener("scroll", handleScroll);

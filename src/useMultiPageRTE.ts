@@ -7,6 +7,7 @@ import IntervalTree, {
   SearchOutput,
 } from "@flatten-js/interval-tree";
 import * as fontkit from "fontkit";
+import { v4 as uuidv4 } from "uuid";
 // import { KonvaEventObject } from "konva/lib/Node";
 // import { useEffect, useMemo, useRef, useState } from "react";
 import { Buffer } from "buffer";
@@ -58,6 +59,33 @@ export type DocumentSize = {
 export type MarginSize = {
   x: number;
   y: number;
+};
+
+export enum VisualKinds {
+  circle = "Circle",
+  rectangle = "Rectangle",
+  image = "Image",
+}
+
+export interface Visual {
+  id: string;
+  kind: VisualKinds;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill: string;
+  page: number;
+}
+
+export const defaultVisual: Visual = {
+  id: "none",
+  kind: VisualKinds.circle,
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
+  page: 0,
 };
 
 const letterSpacing = 1;
@@ -271,6 +299,24 @@ class FormattedPage {
     this.fontData = fontData;
     this.pageNumber = pageNumber;
   }
+
+  // addVisual(data) {
+  //   this.visuals.push({
+  //     ...defaultVisual,
+  //     id: uuidv4(),
+  //     ...data,
+  //   });
+  // }
+
+  // updateVisual(id: string, data: Partial<Visual>) {
+  //   this.visuals = this.visuals.map((visual) => {
+  //     if (visual.id === id) {
+  //       return { ...visual, ...data };
+  //     } else {
+  //       return visual;
+  //     }
+  //   });
+  // }
 
   // insert(index: number, text: string, format: Style) {
   //   performance.mark("page-insert-started");
@@ -823,6 +869,7 @@ const getCapHeightPx = (fontData: fontkit.Font, fontSize: number) => {
 };
 export class MultiPageEditor {
   public pages: FormattedPage[];
+  public visuals: Visual[] = []; // needn't be organized by page
   public size: DocumentSize;
   public visibleLines: number;
   public scrollPosition: number;
@@ -847,6 +894,24 @@ export class MultiPageEditor {
   // TODO: getRenderChunks creates RenderItems as chunks of text, split by formatting AND newlines
   // could be huge performance boost
   // problem is, these chunks actually need to be passed to layout, so fontkit runs less, in theory
+
+  addVisual(data) {
+    this.visuals.push({
+      ...defaultVisual,
+      id: uuidv4(),
+      ...data,
+    });
+  }
+
+  updateVisual(id: string, data: Partial<Visual>) {
+    this.visuals = this.visuals.map((visual) => {
+      if (visual.id === id) {
+        return { ...visual, ...data };
+      } else {
+        return visual;
+      }
+    });
+  }
 
   getAllContent() {
     let content = "";

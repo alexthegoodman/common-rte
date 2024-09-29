@@ -23,9 +23,10 @@
           <button id="cmnItalic">Italic</button>
           <button id="cmnUnderline">Underline</button>
           <label>Add Visuals:</label>
-          <button id="circle">Circle</button>
-          <button id="rectangle">Rectangle</button>
-          <button id="image">Image</button>
+          <button id="cmnCircle">Circle</button>
+          <button id="cmnRectangle">Rectangle</button>
+          <button id="cmnImageButton">Image</button>
+          <input id="cmnImageFile" type="file" class="hidden" />
         </div>
         <div id="cmnContainer"></div>
         <script type="module" src="./src/index.ts"></script>
@@ -44,6 +45,9 @@
               top: 0;
               left: 0;
               z-index: 2;
+            }
+            .hidden {
+              display: none;
             }
             body {
               padding: 25px 0;

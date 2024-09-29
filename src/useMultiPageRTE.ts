@@ -96,12 +96,14 @@ declare global {
     // __canvasRTEEditorActive: boolean;
     //   __canvasRTEInsertCharacterId: string | null;
     __canvasRTEInsertCharacterIndex: number;
+    __canvasRTEInsertCharacterIndexNl: number;
   }
 }
 
 // window.__canvasRTEEditorActive = false;
 //   window.__canvasRTEInsertCharacterId = null;
 window.__canvasRTEInsertCharacterIndex = 0;
+window.__canvasRTEInsertCharacterIndexNl = 0;
 
 class LayoutTree {
   public root: LayoutNode;
@@ -308,15 +310,17 @@ class FormattedPage {
   //   );
   // }
 
-  insert(index: number, text: string, format: Style) {
+  insert(index: number, nlIndex: number, text: string, format: Style) {
     // if (text === "\n") {
     //   console.info("text is newline");
     // }
+    // console.info("insert ", index, nlIndex, text);
 
     performance.mark("page-insert-started");
 
     const lines = text.split(/\r?\n/);
     let currentIndex = index;
+    let currentNlIndex = nlIndex;
     let totalInsertedLength = 0;
 
     let linesFinished = 0; // one newline for each line
@@ -327,11 +331,12 @@ class FormattedPage {
       const line = lines[i];
 
       currentIndex = Math.min(currentIndex, this.content.length);
+      currentNlIndex = Math.min(currentNlIndex, this.content.length);
 
       if (text !== "\n") {
         if (line.length > 0) {
           // Insert the line
-          this.content.insert(currentIndex, line);
+          this.content.insert(currentNlIndex, line);
 
           // Shift existing intervals
           // this.shiftIntervalsAfter(currentIndex, line.length);
@@ -347,12 +352,14 @@ class FormattedPage {
       }
 
       currentIndex += line.length;
+      currentNlIndex += line.length;
 
       // If this isn't the last line, insert a line break
       if (i < lines.length - 1) {
-        this.insertLineBreak(currentIndex, currentIndex + linesFinished);
+        this.insertLineBreak(currentIndex, currentNlIndex);
         // this.shiftIntervalsAfter(currentIndex, 1);
-        currentIndex++;
+        // currentIndex++;
+        currentNlIndex++;
         totalInsertedLength++;
       }
 
@@ -984,6 +991,7 @@ export class MultiPageEditor {
 
   insert(
     globalIndex: number,
+    globalNlIndex: number,
     text: string,
     format: Style,
     setMasterJson: any,
@@ -991,12 +999,15 @@ export class MultiPageEditor {
   ) {
     performance.mark("insert-started");
 
-    let pageIndex = this.getPageIndexForGlobalIndex(globalIndex);
-    let localIndex = this.getLocalIndex(globalIndex, pageIndex);
+    // console.info("insert", globalIndex, globalNlIndex);
+
+    let pageIndex = this.getPageIndexForGlobalIndex(globalIndex, false);
+    let localNlIndex = this.getLocalIndex(globalNlIndex, pageIndex, false);
+    let localIndex = this.getLocalIndex(globalIndex, pageIndex, false);
 
     // console.info("insert indexes: ", pageIndex, localIndex);
 
-    this.pages[pageIndex].insert(localIndex, text, format);
+    this.pages[pageIndex].insert(localIndex, localNlIndex, text, format);
 
     this.renderAndRebalance(
       pageIndex,
@@ -1327,7 +1338,7 @@ export class MultiPageEditor {
         ) as unknown as MappedFormat[];
 
         currentPage.delete(nextPageStartIndex, currentPage.content.length);
-        nextPage.insert(0, overflowText, overflowFormatting[0].format);
+        nextPage.insert(0, 0, overflowText, overflowFormatting[0].format);
       }
 
       if (nextPage.content.length > 0 && !this.pages[i + 1]) {
@@ -1405,16 +1416,21 @@ export class MultiPageEditor {
       let content = this.pages[0].content.substring(0, globalIndex);
       let totalNewlines = 0;
 
+      let count = 0;
       for (let i = 0; i < content.length; i++) {
         const char = content[i];
 
         if (char === "\n") {
           totalNewlines++;
+        } else {
+          count++;
         }
-        if (i > globalIndex) {
-          continue;
+        if (count > globalIndex) {
+          break;
         }
       }
+
+      // console.info("totalNewlines", totalNewlines);
 
       return globalIndex + totalNewlines;
     } else {

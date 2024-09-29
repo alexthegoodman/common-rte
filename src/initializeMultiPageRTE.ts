@@ -108,14 +108,17 @@ export const initializeMultiPageRTE = (
 
             editorInstance?.insert(
               window.__canvasRTEInsertCharacterIndex,
+              window.__canvasRTEInsertCharacterIndexNl,
               character,
               defaultStyle,
               setMasterJson,
               false
             );
 
-            window.__canvasRTEInsertCharacterIndex =
-              window.__canvasRTEInsertCharacterIndex + 1;
+            // window.__canvasRTEInsertCharacterIndex =
+            //   window.__canvasRTEInsertCharacterIndex + 1;
+            window.__canvasRTEInsertCharacterIndexNl =
+              window.__canvasRTEInsertCharacterIndexNl + 1;
           }
           break;
         case "Backspace":
@@ -134,6 +137,8 @@ export const initializeMultiPageRTE = (
 
             window.__canvasRTEInsertCharacterIndex =
               window.__canvasRTEInsertCharacterIndex - 1;
+            window.__canvasRTEInsertCharacterIndexNl =
+              window.__canvasRTEInsertCharacterIndexNl - 1;
           }
           break;
         case "Delete":
@@ -176,6 +181,7 @@ export const initializeMultiPageRTE = (
 
             editorInstance?.insert(
               window.__canvasRTEInsertCharacterIndex,
+              window.__canvasRTEInsertCharacterIndexNl,
               character,
               defaultStyle,
               setMasterJson,
@@ -184,6 +190,8 @@ export const initializeMultiPageRTE = (
 
             window.__canvasRTEInsertCharacterIndex =
               window.__canvasRTEInsertCharacterIndex + 1;
+            window.__canvasRTEInsertCharacterIndexNl =
+              window.__canvasRTEInsertCharacterIndexNl + 1;
           }
           break;
         default:
@@ -200,6 +208,7 @@ export const initializeMultiPageRTE = (
 
             editorInstance?.insert(
               window.__canvasRTEInsertCharacterIndex,
+              window.__canvasRTEInsertCharacterIndexNl,
               character,
               defaultStyle,
               setMasterJson,
@@ -212,6 +221,8 @@ export const initializeMultiPageRTE = (
 
             window.__canvasRTEInsertCharacterIndex =
               window.__canvasRTEInsertCharacterIndex + 1;
+            window.__canvasRTEInsertCharacterIndexNl =
+              window.__canvasRTEInsertCharacterIndexNl + 1;
           }
           break;
       }
@@ -254,12 +265,14 @@ export const initializeMultiPageRTE = (
     const target = e.target;
     const characterId = target.id();
     const characterIndex = parseInt(characterId.split("-")[2]);
+    const characterNlIndex = parseInt(characterId.split("-")[3]);
 
     console.info("characterId", characterId, characterIndex);
 
     const character = masterJson[characterIndex];
 
     window.__canvasRTEInsertCharacterIndex = characterIndex;
+    window.__canvasRTEInsertCharacterIndexNl = characterNlIndex;
 
     setEditorActive(true);
   };
@@ -320,6 +333,7 @@ export const initializeMultiPageRTE = (
     console.info("render nodes", jsonByPage);
 
     let globalIndex = 0;
+    let globalNlIndex = 0;
     for (let i = 0; i < editorInstance.pages.length; i++) {
       const masterJson = jsonByPage[i];
 
@@ -373,13 +387,15 @@ export const initializeMultiPageRTE = (
     for (let i = 0; i < masterJson.length; i++) {
       const charText = masterJson[i];
 
+      globalNlIndex++;
+
       if (charText?.char === "\n") {
         continue;
       }
 
       const charId = `${charText.char}-${charText.page}-${
         totalLengthBeforeIndex + globalIndex
-      }`;
+      }-${totalLengthBeforeIndex + globalNlIndex}`; // will want a totalLengthBeforeIndexWithoutNewlines as well
       // const isSelected = selectedTextNodes.includes(charId);
       if (firstSelectedNode === charId && lastSelectedNode) {
         isSelected = true;
@@ -497,6 +513,7 @@ export const initializeMultiPageRTE = (
     editorInstance = multiPageEditor;
 
     multiPageEditor.insert(
+      0,
       0,
       initialMarkdown,
       defaultStyle,

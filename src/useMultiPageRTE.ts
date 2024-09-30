@@ -300,23 +300,9 @@ class FormattedPage {
     this.pageNumber = pageNumber;
   }
 
-  // addVisual(data) {
-  //   this.visuals.push({
-  //     ...defaultVisual,
-  //     id: uuidv4(),
-  //     ...data,
-  //   });
-  // }
-
-  // updateVisual(id: string, data: Partial<Visual>) {
-  //   this.visuals = this.visuals.map((visual) => {
-  //     if (visual.id === id) {
-  //       return { ...visual, ...data };
-  //     } else {
-  //       return visual;
-  //     }
-  //   });
-  // }
+  getCharAtIndex(localIndexNl: number) {
+    return this.content.substring(localIndexNl, localIndexNl + 1);
+  }
 
   // insert(index: number, text: string, format: Style) {
   //   performance.mark("page-insert-started");
@@ -895,6 +881,13 @@ export class MultiPageEditor {
   // could be huge performance boost
   // problem is, these chunks actually need to be passed to layout, so fontkit runs less, in theory
 
+  getCharAtIndex(globalIndex: number) {
+    let pageIndex = this.getPageIndexForGlobalIndex(globalIndex, true);
+    let localIndexNl = this.getLocalIndex(globalIndex, pageIndex, true);
+
+    return this.pages[pageIndex].getCharAtIndex(localIndexNl);
+  }
+
   addVisual(data) {
     this.visuals.push({
       ...defaultVisual,
@@ -922,7 +915,13 @@ export class MultiPageEditor {
     return content;
   }
 
-  delete(globalStart: number, globalEnd: number, setMasterJson: any) {
+  delete(
+    globalStart: number,
+    globalEnd: number,
+    globalStartNl: number,
+    globalEndNl: number,
+    setMasterJson: any
+  ) {
     let startPageIndex = this.getPageIndexForGlobalIndex(globalStart, false);
     let startLocalIndex = this.getLocalIndex(
       globalStart,
@@ -930,24 +929,26 @@ export class MultiPageEditor {
       false
     );
     let adjustedStartLocal = this.getLocalIndex(
-      globalStart,
+      globalStartNl,
       startPageIndex,
-      true
+      false
     );
 
     let endPageIndex = this.getPageIndexForGlobalIndex(globalEnd, false);
     let endLocalIndex = this.getLocalIndex(globalEnd, endPageIndex, false);
-    let adjustedEndLocal = this.getLocalIndex(globalEnd, endPageIndex, true);
+    let adjustedEndLocal = this.getLocalIndex(globalEndNl, endPageIndex, false);
 
-    console.info(
-      "check indexes",
-      startPageIndex,
-      startLocalIndex,
-      adjustedStartLocal,
-      endPageIndex,
-      endLocalIndex,
-      adjustedEndLocal
-    );
+    // console.info(
+    //   "check indexes",
+    //   globalStart,
+    //   globalStartNl,
+    //   startPageIndex,
+    //   startLocalIndex,
+    //   adjustedStartLocal,
+    //   endPageIndex,
+    //   endLocalIndex,
+    //   adjustedEndLocal
+    // );
 
     this.pages[startPageIndex].delete(
       startLocalIndex,
@@ -956,7 +957,7 @@ export class MultiPageEditor {
       adjustedEndLocal
     );
 
-    console.info("deleted");
+    // console.info("deleted");
 
     this.renderAndRebalance(startPageIndex, setMasterJson, false);
   }
@@ -1014,7 +1015,7 @@ export class MultiPageEditor {
       endIndex
     );
 
-    console.info("renderAll", layout, combined);
+    console.info("renderAll", formattedText, layout, combined);
 
     return combined;
   }
@@ -1490,7 +1491,7 @@ export class MultiPageEditor {
         } else {
           count++;
         }
-        if (count > globalIndex) {
+        if (count - 1 > globalIndex) {
           break;
         }
       }

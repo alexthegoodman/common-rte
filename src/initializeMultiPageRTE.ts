@@ -135,16 +135,25 @@ export const initializeMultiPageRTE = (
               console.error("No editor");
             }
 
-            console.info("backspace");
+            const char = editorInstance?.getCharAtIndex(
+              window.__canvasRTEInsertCharacterIndex
+            );
+
+            console.info("backspace", char);
 
             editorInstance?.delete(
               window.__canvasRTEInsertCharacterIndex,
               window.__canvasRTEInsertCharacterIndex + 1,
+              window.__canvasRTEInsertCharacterIndexNl,
+              window.__canvasRTEInsertCharacterIndexNl + 1,
               setMasterJson
             );
 
-            window.__canvasRTEInsertCharacterIndex =
-              window.__canvasRTEInsertCharacterIndex - 1;
+            if (char !== "\n") {
+              window.__canvasRTEInsertCharacterIndex =
+                window.__canvasRTEInsertCharacterIndex - 1;
+            }
+
             window.__canvasRTEInsertCharacterIndexNl =
               window.__canvasRTEInsertCharacterIndexNl - 1;
           }
@@ -380,6 +389,8 @@ export const initializeMultiPageRTE = (
       .slice(0, roughPage) // Get all arrays before the index
       .reduce((sum, arr) => sum + arr.length, 0); // Sum up their lengths
 
+    // console.info("totalLengthBeforeIndex", totalLengthBeforeIndex);
+
     const masterJson = jsonByPage[key];
 
     var group = new Konva.Group({
@@ -403,7 +414,7 @@ export const initializeMultiPageRTE = (
 
       const charId = `${charText.char}-${charText.page}-${
         totalLengthBeforeIndex + globalIndex
-      }-${totalLengthBeforeIndex + globalNlIndex}`; // will want a totalLengthBeforeIndexWithoutNewlines as well
+      }-${totalLengthBeforeIndex + globalNlIndex - 1}`; // will want a totalLengthBeforeIndexWithoutNewlines as well
       // const isSelected = selectedTextNodes.includes(charId);
       if (firstSelectedNode === charId && lastSelectedNode) {
         isSelected = true;

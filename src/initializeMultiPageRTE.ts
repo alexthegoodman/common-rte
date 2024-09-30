@@ -24,13 +24,16 @@ let stage = null;
 let layer = null;
 // let highlightLayer = null;
 let visualsLayer = null;
+let cursorLayer = null;
 let highlightGroup = null;
 let visualsTransformer = null;
+let cursorGroup = null;
 
 let isSelected = false;
 
 let debounceTimer = null;
 let shadowSize = 25;
+let cursorInterval = null;
 
 export const initializeMultiPageRTE = (
   initialMarkdown: string,
@@ -70,10 +73,12 @@ export const initializeMultiPageRTE = (
 
         // highlightLayer = new Konva.Layer();
         visualsLayer = new Konva.Layer();
+        cursorLayer = new Konva.Layer();
         layer = new Konva.Layer();
 
         stage?.add(layer);
         stage?.add(visualsLayer);
+        stage?.add(cursorLayer);
 
         visualsTransformer = new Konva.Transformer();
         visualsLayer.add(visualsTransformer);
@@ -142,10 +147,10 @@ export const initializeMultiPageRTE = (
             console.info("backspace", char);
 
             editorInstance?.delete(
+              window.__canvasRTEInsertCharacterIndex - 1,
               window.__canvasRTEInsertCharacterIndex,
-              window.__canvasRTEInsertCharacterIndex + 1,
+              window.__canvasRTEInsertCharacterIndexNl - 1,
               window.__canvasRTEInsertCharacterIndexNl,
-              window.__canvasRTEInsertCharacterIndexNl + 1,
               setMasterJson
             );
 
@@ -156,6 +161,8 @@ export const initializeMultiPageRTE = (
 
             window.__canvasRTEInsertCharacterIndexNl =
               window.__canvasRTEInsertCharacterIndexNl - 1;
+
+            renderCursor();
           }
           break;
         case "Delete":
@@ -240,6 +247,8 @@ export const initializeMultiPageRTE = (
               window.__canvasRTEInsertCharacterIndex + 1;
             window.__canvasRTEInsertCharacterIndexNl =
               window.__canvasRTEInsertCharacterIndexNl + 1;
+
+            renderCursor();
           }
           break;
       }
@@ -292,6 +301,8 @@ export const initializeMultiPageRTE = (
     window.__canvasRTEInsertCharacterIndexNl = characterNlIndex;
 
     setEditorActive(true);
+
+    renderCursor();
   };
 
   const handleTextMouseDown = (e: KonvaEventObject<MouseEvent>) => {
@@ -533,6 +544,47 @@ export const initializeMultiPageRTE = (
 
     visualsTransformer.nodes(allVisualsAdded);
     visualsLayer.batchDraw();
+  };
+
+  const renderCursor = () => {
+    if (
+      window.__canvasRTEInsertCharacterIndex ||
+      window.__canvasRTEInsertCharacterIndexNl
+    ) {
+      cursorGroup?.destroy();
+
+      const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+
+      cursorGroup = new Konva.Group({
+        x: marginSize.x,
+        y: (documentSize.height + shadowSize) * roughPage + marginSize.y,
+        name: "selectionGroup",
+      });
+
+      const charData = masterJson[window.__canvasRTEInsertCharacterIndexNl];
+      console.info("charData", charData);
+      const cursor = new Konva.Rect({
+        width: 2,
+        height: 16,
+        x: charData.x - 1,
+        y: charData.y,
+        fill: "black",
+      });
+
+      cursorGroup.add(cursor);
+      cursorLayer.add(cursorGroup);
+
+      // Create the blinking animation
+      const anim = new Konva.Animation(function (frame) {
+        const period = 1000; // 1 second
+        const time = (frame.time % period) / period;
+
+        cursor.opacity(Math.abs(Math.sin(time * Math.PI)));
+      }, cursorLayer);
+
+      // Start the animation
+      anim.start();
+    }
   };
 
   const getJsonByPage = (masterJson) => {

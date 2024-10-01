@@ -212,6 +212,9 @@ export const initializeMultiPageRTE = (
                   setMasterJson
                 );
 
+                setFirstSelectedNode(null);
+                setLastSelectedNode(null);
+
                 //   let selectionLength = Math.abs(lastIndex - firstIndex);
                 //   let selectionLengthNl = Math.abs(lastIndexNl - firstIndexNl);
 
@@ -382,6 +385,15 @@ export const initializeMultiPageRTE = (
   const handleTextClick = (e: KonvaEventObject<MouseEvent>) => {
     console.info("text click");
 
+    setFirstSelectedNode(null);
+    setLastSelectedNode(null);
+
+    insertCursor(e);
+  };
+
+  const insertCursor = (e: KonvaEventObject<MouseEvent>) => {
+    console.info("text click");
+
     const target = e.target;
     const characterId = target.id();
     const characterIndex = parseInt(characterId.split("-")[2]);
@@ -409,7 +421,7 @@ export const initializeMultiPageRTE = (
     setFirstSelectedNode(characterId);
     setLastSelectedNode(null);
     // setEditorActive(true);
-    handleTextClick(e); // for now this reuse has no side effects, convenient
+    insertCursor(e); // for now this reuse has no side effects, convenient
   };
   const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
     if (isSelectingText && e.evt.buttons) {

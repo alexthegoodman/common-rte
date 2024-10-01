@@ -34,6 +34,7 @@ let isSelected = false;
 let debounceTimer = null;
 let shadowSize = 25;
 let cursorInterval = null;
+let selectionDirection = "forward";
 
 export const initializeMultiPageRTE = (
   initialMarkdown: string,
@@ -102,6 +103,7 @@ export const initializeMultiPageRTE = (
   const setLastSelectedNode = (node) => (lastSelectedNode = node);
   const setEditorInstance = (instance) => (editorInstance = instance);
   const setEditorActive = (active) => (editorActive = active);
+  const setSelectionDirection = (dir) => (selectionDirection = dir);
 
   const handleKeydown = (e: KeyboardEvent) => {
     e.preventDefault();
@@ -215,21 +217,23 @@ export const initializeMultiPageRTE = (
                 setFirstSelectedNode(null);
                 setLastSelectedNode(null);
 
-                //   let selectionLength = Math.abs(lastIndex - firstIndex);
-                //   let selectionLengthNl = Math.abs(lastIndexNl - firstIndexNl);
+                if (selectionDirection === "backward") {
+                  let selectionLength = Math.abs(lastIndex - firstIndex);
+                  let selectionLengthNl = Math.abs(lastIndexNl - firstIndexNl);
 
-                //   console.info(
-                //     "selection length",
-                //     selectionLength,
-                //     selectionLengthNl
-                //   );
+                  console.info(
+                    "selection length",
+                    selectionLength,
+                    selectionLengthNl
+                  );
 
-                // unnecessary as it deletes all text in front of itself
-                //   window.__canvasRTEInsertCharacterIndex =
-                //     window.__canvasRTEInsertCharacterIndex - selectionLength;
+                  window.__canvasRTEInsertCharacterIndex =
+                    window.__canvasRTEInsertCharacterIndex - selectionLength;
 
-                //   window.__canvasRTEInsertCharacterIndexNl =
-                //     window.__canvasRTEInsertCharacterIndexNl - selectionLengthNl;
+                  window.__canvasRTEInsertCharacterIndexNl =
+                    window.__canvasRTEInsertCharacterIndexNl -
+                    selectionLengthNl;
+                }
               } else {
                 if (!editorActive) {
                   console.error("Editor not active");
@@ -389,6 +393,8 @@ export const initializeMultiPageRTE = (
     setLastSelectedNode(null);
 
     insertCursor(e);
+
+    clearSelectionHightlight(stage, layer);
   };
 
   const insertCursor = (e: KonvaEventObject<MouseEvent>) => {
@@ -419,7 +425,7 @@ export const initializeMultiPageRTE = (
     const characterId = target.id();
 
     setFirstSelectedNode(characterId);
-    setLastSelectedNode(null);
+    setLastSelectedNode(characterId);
     // setEditorActive(true);
     insertCursor(e); // for now this reuse has no side effects, convenient
   };
@@ -430,8 +436,17 @@ export const initializeMultiPageRTE = (
       const target = e.target;
       const characterId = target.id();
 
-      // setSelectedTextNodes((nodes) => [characterId, ...nodes]);
-      setLastSelectedNode(characterId);
+      const characterNlIndex = parseInt(characterId.split("-")[3]);
+      const firstIndex = parseInt(firstSelectedNode.split("-")[3]);
+
+      if (firstIndex >= characterNlIndex) {
+        setFirstSelectedNode(characterId);
+        setSelectionDirection("backward");
+      } else {
+        setLastSelectedNode(characterId);
+        setSelectionDirection("forward");
+      }
+
       renderSelectionHighlight(stage, layer, jsonByPage);
     }
   };
@@ -627,6 +642,10 @@ export const initializeMultiPageRTE = (
     highlightGroup.moveDown();
     // lyr?.moveDown();
     // lyr.zIndex(1);
+  };
+
+  const clearSelectionHightlight = (stg, lyr) => {
+    highlightGroup?.destroy();
   };
 
   const renderVisuals = () => {

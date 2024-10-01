@@ -106,13 +106,15 @@ export const initializeMultiPageRTE = (
   const handleKeydown = (e: KeyboardEvent) => {
     e.preventDefault();
 
+    // some key triggers do not require the editor to be active (?)
     if (editorActive) {
       // const characterId = uuidv4();
 
-      if (!window.__canvasRTEInsertCharacterIndex) {
-        console.info("trigger key with no cursor?");
-        return;
-      }
+      // some key triggers do not require a cursor
+      //   if (!window.__canvasRTEInsertCharacterIndex) {
+      //     console.info("trigger key with no cursor?");
+      //     return;
+      //   }
 
       switch (e.key) {
         case "Enter":
@@ -136,31 +138,69 @@ export const initializeMultiPageRTE = (
           break;
         case "Backspace":
           {
-            if (!editorActive) {
-              console.error("No editor");
+            if (firstSelectedNode && lastSelectedNode) {
+              const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
+              const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
+              const firstIndexNl = parseInt(firstSelectedNode.split("-")[3]);
+              const lastIndexNl = parseInt(lastSelectedNode.split("-")[3]);
+
+              const newlineCount = editorInstance?.getNewlinesBetween(
+                0,
+                firstIndex
+              );
+
+              console.info("backspace selection", newlineCount);
+
+              editorInstance?.delete(
+                firstIndex,
+                lastIndex,
+                firstIndexNl,
+                lastIndexNl + 1,
+                setMasterJson
+              );
+
+              //   let selectionLength = Math.abs(lastIndex - firstIndex);
+              //   let selectionLengthNl = Math.abs(lastIndexNl - firstIndexNl);
+
+              //   console.info(
+              //     "selection length",
+              //     selectionLength,
+              //     selectionLengthNl
+              //   );
+
+              // unnecessary as it deletes all text in front of itself
+              //   window.__canvasRTEInsertCharacterIndex =
+              //     window.__canvasRTEInsertCharacterIndex - selectionLength;
+
+              //   window.__canvasRTEInsertCharacterIndexNl =
+              //     window.__canvasRTEInsertCharacterIndexNl - selectionLengthNl;
+            } else {
+              if (!editorActive) {
+                console.error("Editor not active");
+              }
+
+              const char = editorInstance?.getCharAtIndex(
+                window.__canvasRTEInsertCharacterIndex
+              );
+
+              console.info("backspace", char);
+
+              editorInstance?.delete(
+                window.__canvasRTEInsertCharacterIndex - 1,
+                window.__canvasRTEInsertCharacterIndex,
+                window.__canvasRTEInsertCharacterIndexNl - 1,
+                window.__canvasRTEInsertCharacterIndexNl,
+                setMasterJson
+              );
+
+              if (char !== "\n") {
+                window.__canvasRTEInsertCharacterIndex =
+                  window.__canvasRTEInsertCharacterIndex - 1;
+              }
+
+              window.__canvasRTEInsertCharacterIndexNl =
+                window.__canvasRTEInsertCharacterIndexNl - 1;
             }
-
-            const char = editorInstance?.getCharAtIndex(
-              window.__canvasRTEInsertCharacterIndex
-            );
-
-            console.info("backspace", char);
-
-            editorInstance?.delete(
-              window.__canvasRTEInsertCharacterIndex - 1,
-              window.__canvasRTEInsertCharacterIndex,
-              window.__canvasRTEInsertCharacterIndexNl - 1,
-              window.__canvasRTEInsertCharacterIndexNl,
-              setMasterJson
-            );
-
-            if (char !== "\n") {
-              window.__canvasRTEInsertCharacterIndex =
-                window.__canvasRTEInsertCharacterIndex - 1;
-            }
-
-            window.__canvasRTEInsertCharacterIndexNl =
-              window.__canvasRTEInsertCharacterIndexNl - 1;
 
             renderCursor();
           }
@@ -314,6 +354,8 @@ export const initializeMultiPageRTE = (
 
     setFirstSelectedNode(characterId);
     setLastSelectedNode(null);
+    // setEditorActive(true);
+    handleTextClick(e); // for now this reuse has no side effects, convenient
   };
   const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
     if (isSelectingText && e.evt.buttons) {
@@ -562,7 +604,11 @@ export const initializeMultiPageRTE = (
       });
 
       const charData = masterJson[window.__canvasRTEInsertCharacterIndexNl];
-      console.info("charData", charData);
+      console.info(
+        "charData",
+        window.__canvasRTEInsertCharacterIndexNl,
+        charData
+      );
       const cursor = new Konva.Rect({
         width: 2,
         height: 16,

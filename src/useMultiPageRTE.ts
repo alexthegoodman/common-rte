@@ -304,6 +304,19 @@ class FormattedPage {
     return this.content.substring(localIndexNl, localIndexNl + 1);
   }
 
+  // getNewlinesBetween(startIndexNl: number, endIndexNl: number) {
+  //   const content = this.content.substring(startIndexNl, endIndexNl);
+  //   console.info("getNewlinesBetween", startIndexNl, endIndexNl, content);
+  //   let count = 0;
+  //   for (let i = 0; i < content.length; i++) {
+  //     const char = content[i];
+  //     if (char === "\n") {
+  //       count++;
+  //     }
+  //   }
+  //   return count;
+  // }
+
   // insert(index: number, text: string, format: Style) {
   //   performance.mark("page-insert-started");
 
@@ -888,6 +901,40 @@ export class MultiPageEditor {
     return this.pages[pageIndex].getCharAtIndex(localIndexNl);
   }
 
+  getNewlinesBetween(startGlobalIndex: number, endGlobalIndex: number) {
+    let startPageIndex = this.getPageIndexForGlobalIndex(
+      startGlobalIndex,
+      true
+    );
+    let endPageIndex = this.getPageIndexForGlobalIndex(endGlobalIndex, true);
+
+    let startIndexNl = this.getLocalIndex(
+      startGlobalIndex,
+      startPageIndex,
+      true
+    );
+    let endIndexNl = this.getLocalIndex(endGlobalIndex, endPageIndex, true);
+
+    // console.info("getNewlinesBetween", startGlobalIndex, endGlobalIndex);
+
+    let count = 0;
+    for (let i = 0; i <= endPageIndex; i++) {
+      const currentPage = this.pages[i];
+      const content = currentPage.content.substring(startIndexNl, endIndexNl);
+
+      // console.info("content", content);
+
+      for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        if (char === "\n") {
+          count++;
+        }
+      }
+    }
+
+    return count;
+  }
+
   addVisual(data) {
     this.visuals.push({
       ...defaultVisual,
@@ -959,6 +1006,7 @@ export class MultiPageEditor {
 
     // console.info("deleted");
 
+    // this.updatePageLayouts(startPageIndex);
     this.renderAndRebalance(startPageIndex, setMasterJson, false);
   }
 

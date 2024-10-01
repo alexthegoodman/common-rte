@@ -116,181 +116,235 @@ export const initializeMultiPageRTE = (
       //     return;
       //   }
 
-      switch (e.key) {
-        case "Enter":
-          {
-            const character = "\n";
+      // Check if Ctrl key (or Cmd key on Mac) is pressed
+      const isCtrlPressed = e.ctrlKey || e.metaKey;
+
+      // Handle copy (Ctrl+C / Cmd+C)
+      if (isCtrlPressed && e.key === "c") {
+        console.info("copy text");
+        //     const selectedText = window.getSelection().toString();
+        //   if (selectedText) {
+        //     navigator.clipboard.writeText(selectedText)
+        //       .then(() => console.log('Text copied to clipboard'))
+        //       .catch(err => console.error('Failed to copy text: ', err));
+        //   }
+        e.preventDefault();
+      }
+
+      // Handle paste (Ctrl+V / Cmd+V)
+      else if (isCtrlPressed && e.key === "v") {
+        console.info("paste text");
+
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            console.log("Pasted text:", text);
 
             editorInstance?.insert(
               window.__canvasRTEInsertCharacterIndex,
               window.__canvasRTEInsertCharacterIndexNl,
-              character,
+              text,
               defaultStyle,
               setMasterJson,
               false
             );
 
-            // window.__canvasRTEInsertCharacterIndex =
-            //   window.__canvasRTEInsertCharacterIndex + 1;
+            window.__canvasRTEInsertCharacterIndex =
+              window.__canvasRTEInsertCharacterIndex + text.length;
             window.__canvasRTEInsertCharacterIndexNl =
-              window.__canvasRTEInsertCharacterIndexNl + 1;
-          }
-          break;
-        case "Backspace":
-          {
-            if (firstSelectedNode && lastSelectedNode) {
-              const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
-              const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
-              const firstIndexNl = parseInt(firstSelectedNode.split("-")[3]);
-              const lastIndexNl = parseInt(lastSelectedNode.split("-")[3]);
+              window.__canvasRTEInsertCharacterIndexNl + text.length;
 
-              const newlineCount = editorInstance?.getNewlinesBetween(
-                0,
-                firstIndex
-              );
+            renderCursor();
+          })
+          .catch((err) => console.error("Failed to paste text: ", err));
 
-              console.info("backspace selection", newlineCount);
+        e.preventDefault();
+      }
 
-              editorInstance?.delete(
-                firstIndex,
-                lastIndex,
-                firstIndexNl,
-                lastIndexNl + 1,
-                setMasterJson
-              );
+      // Handle cut (Ctrl+X / Cmd+X)
+      else if (isCtrlPressed && e.key === "x") {
+        console.info("cut text");
+        // copy then delete
+        e.preventDefault();
+      }
 
-              //   let selectionLength = Math.abs(lastIndex - firstIndex);
-              //   let selectionLengthNl = Math.abs(lastIndexNl - firstIndexNl);
+      if (!isCtrlPressed) {
+        switch (e.key) {
+          case "Enter":
+            {
+              const character = "\n";
 
-              //   console.info(
-              //     "selection length",
-              //     selectionLength,
-              //     selectionLengthNl
-              //   );
-
-              // unnecessary as it deletes all text in front of itself
-              //   window.__canvasRTEInsertCharacterIndex =
-              //     window.__canvasRTEInsertCharacterIndex - selectionLength;
-
-              //   window.__canvasRTEInsertCharacterIndexNl =
-              //     window.__canvasRTEInsertCharacterIndexNl - selectionLengthNl;
-            } else {
-              if (!editorActive) {
-                console.error("Editor not active");
-              }
-
-              const char = editorInstance?.getCharAtIndex(
-                window.__canvasRTEInsertCharacterIndex
-              );
-
-              console.info("backspace", char);
-
-              editorInstance?.delete(
-                window.__canvasRTEInsertCharacterIndex - 1,
+              editorInstance?.insert(
                 window.__canvasRTEInsertCharacterIndex,
-                window.__canvasRTEInsertCharacterIndexNl - 1,
                 window.__canvasRTEInsertCharacterIndexNl,
-                setMasterJson
+                character,
+                defaultStyle,
+                setMasterJson,
+                false
               );
 
-              if (char !== "\n") {
-                window.__canvasRTEInsertCharacterIndex =
-                  window.__canvasRTEInsertCharacterIndex - 1;
+              // window.__canvasRTEInsertCharacterIndex =
+              //   window.__canvasRTEInsertCharacterIndex + 1;
+              window.__canvasRTEInsertCharacterIndexNl =
+                window.__canvasRTEInsertCharacterIndexNl + 1;
+            }
+            break;
+          case "Backspace":
+            {
+              if (firstSelectedNode && lastSelectedNode) {
+                const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
+                const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
+                const firstIndexNl = parseInt(firstSelectedNode.split("-")[3]);
+                const lastIndexNl = parseInt(lastSelectedNode.split("-")[3]);
+
+                const newlineCount = editorInstance?.getNewlinesBetween(
+                  0,
+                  firstIndex
+                );
+
+                console.info("backspace selection", newlineCount);
+
+                editorInstance?.delete(
+                  firstIndex,
+                  lastIndex,
+                  firstIndexNl,
+                  lastIndexNl + 1,
+                  setMasterJson
+                );
+
+                //   let selectionLength = Math.abs(lastIndex - firstIndex);
+                //   let selectionLengthNl = Math.abs(lastIndexNl - firstIndexNl);
+
+                //   console.info(
+                //     "selection length",
+                //     selectionLength,
+                //     selectionLengthNl
+                //   );
+
+                // unnecessary as it deletes all text in front of itself
+                //   window.__canvasRTEInsertCharacterIndex =
+                //     window.__canvasRTEInsertCharacterIndex - selectionLength;
+
+                //   window.__canvasRTEInsertCharacterIndexNl =
+                //     window.__canvasRTEInsertCharacterIndexNl - selectionLengthNl;
+              } else {
+                if (!editorActive) {
+                  console.error("Editor not active");
+                }
+
+                const char = editorInstance?.getCharAtIndex(
+                  window.__canvasRTEInsertCharacterIndex
+                );
+
+                console.info("backspace", char);
+
+                editorInstance?.delete(
+                  window.__canvasRTEInsertCharacterIndex - 1,
+                  window.__canvasRTEInsertCharacterIndex,
+                  window.__canvasRTEInsertCharacterIndexNl - 1,
+                  window.__canvasRTEInsertCharacterIndexNl,
+                  setMasterJson
+                );
+
+                if (char !== "\n") {
+                  window.__canvasRTEInsertCharacterIndex =
+                    window.__canvasRTEInsertCharacterIndex - 1;
+                }
+
+                window.__canvasRTEInsertCharacterIndexNl =
+                  window.__canvasRTEInsertCharacterIndexNl - 1;
               }
 
+              renderCursor();
+            }
+            break;
+          case "Delete":
+            {
+            }
+            break;
+          case "ArrowLeft":
+            {
+            }
+            break;
+          case "ArrowRight":
+            {
+            }
+            break;
+          case "ArrowUp":
+            {
+            }
+            break;
+          case "ArrowDown":
+            {
+            }
+            break;
+          case "Escape":
+            {
+              setEditorActive(false);
+            }
+            break;
+          case "Shift":
+            {
+            }
+            break;
+          case "Meta":
+            {
+            }
+            break;
+          case "Tab":
+            {
+              const type = "tab";
+              const character = "    ";
+
+              editorInstance?.insert(
+                window.__canvasRTEInsertCharacterIndex,
+                window.__canvasRTEInsertCharacterIndexNl,
+                character,
+                defaultStyle,
+                setMasterJson,
+                false
+              );
+
+              window.__canvasRTEInsertCharacterIndex =
+                window.__canvasRTEInsertCharacterIndex + 1;
               window.__canvasRTEInsertCharacterIndexNl =
-                window.__canvasRTEInsertCharacterIndexNl - 1;
+                window.__canvasRTEInsertCharacterIndexNl + 1;
             }
+            break;
+          default:
+            {
+              // any other character
+              const type = "character";
+              const character = e.key;
 
-            renderCursor();
-          }
-          break;
-        case "Delete":
-          {
-          }
-          break;
-        case "ArrowLeft":
-          {
-          }
-          break;
-        case "ArrowRight":
-          {
-          }
-          break;
-        case "ArrowUp":
-          {
-          }
-          break;
-        case "ArrowDown":
-          {
-          }
-          break;
-        case "Escape":
-          {
-            setEditorActive(false);
-          }
-          break;
-        case "Shift":
-          {
-          }
-          break;
-        case "Meta":
-          {
-          }
-          break;
-        case "Tab":
-          {
-            const type = "tab";
-            const character = "    ";
+              // console.info("char", character);
 
-            editorInstance?.insert(
-              window.__canvasRTEInsertCharacterIndex,
-              window.__canvasRTEInsertCharacterIndexNl,
-              character,
-              defaultStyle,
-              setMasterJson,
-              false
-            );
+              if (!editorActive) {
+                console.error("No editor");
+              }
 
-            window.__canvasRTEInsertCharacterIndex =
-              window.__canvasRTEInsertCharacterIndex + 1;
-            window.__canvasRTEInsertCharacterIndexNl =
-              window.__canvasRTEInsertCharacterIndexNl + 1;
-          }
-          break;
-        default:
-          {
-            // any other character
-            const type = "character";
-            const character = e.key;
+              editorInstance?.insert(
+                window.__canvasRTEInsertCharacterIndex,
+                window.__canvasRTEInsertCharacterIndexNl,
+                character,
+                defaultStyle,
+                setMasterJson,
+                false
+              );
 
-            // console.info("char", character);
+              //   jsonByPage = getJsonByPage(masterJson);
 
-            if (!editorActive) {
-              console.error("No editor");
+              //   renderTextNodes(stage, layer, jsonByPage);
+
+              window.__canvasRTEInsertCharacterIndex =
+                window.__canvasRTEInsertCharacterIndex + 1;
+              window.__canvasRTEInsertCharacterIndexNl =
+                window.__canvasRTEInsertCharacterIndexNl + 1;
+
+              renderCursor();
             }
-
-            editorInstance?.insert(
-              window.__canvasRTEInsertCharacterIndex,
-              window.__canvasRTEInsertCharacterIndexNl,
-              character,
-              defaultStyle,
-              setMasterJson,
-              false
-            );
-
-            //   jsonByPage = getJsonByPage(masterJson);
-
-            //   renderTextNodes(stage, layer, jsonByPage);
-
-            window.__canvasRTEInsertCharacterIndex =
-              window.__canvasRTEInsertCharacterIndex + 1;
-            window.__canvasRTEInsertCharacterIndexNl =
-              window.__canvasRTEInsertCharacterIndexNl + 1;
-
-            renderCursor();
-          }
-          break;
+            break;
+        }
       }
 
       // const renderable = editorInstanceRef.current?.renderVisible();

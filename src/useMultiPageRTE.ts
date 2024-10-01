@@ -1007,7 +1007,7 @@ export class MultiPageEditor {
     // console.info("deleted");
 
     // this.updatePageLayouts(startPageIndex);
-    this.renderAndRebalance(startPageIndex, setMasterJson, false);
+    this.renderAndRebalance(startPageIndex, setMasterJson, false, 0, 0, false);
   }
 
   addNewlinesToIndex(globalIndex: number) {}
@@ -1141,7 +1141,8 @@ export class MultiPageEditor {
     setMasterJson: any,
     initialize = false,
     insertLength: number,
-    insertIndex: number
+    insertIndex: number,
+    isInsertion: boolean = true
   ) {
     clearTimeout(this.rebalanceDebounce);
     clearTimeout(this.rebalanceDebounceStaggered);
@@ -1151,9 +1152,15 @@ export class MultiPageEditor {
     }
 
     if (initialize) {
-      this.rebalancePages(pageIndex, initialize);
+      this.rebalancePages(pageIndex, initialize, 0, 0, true);
     } else {
-      this.rebalancePages(pageIndex, initialize, insertLength, insertIndex);
+      this.rebalancePages(
+        pageIndex,
+        initialize,
+        insertLength,
+        insertIndex,
+        isInsertion
+      );
     }
 
     // const { startIndex, combined } = this.renderVisible();
@@ -1346,15 +1353,95 @@ export class MultiPageEditor {
     return total;
   }
 
+  // rebalancePages(
+  //   startPageIndex: number,
+  //   initialize = false,
+  //   insertLength: number,
+  //   insertIndex: number
+  // ) {
+  //   performance.mark("rebalance-started");
+
+  //   const pageHeight = this.size.height;
+
+  //   let totalPages = this.pages.length;
+  //   if (initialize) {
+  //     totalPages = Math.max(
+  //       1,
+  //       Math.ceil(this.pages[0].content.length / this.avgPageLength)
+  //     );
+  //   }
+
+  //   for (let i = startPageIndex; i < totalPages; i++) {
+  //     const currentPage = this.pages[i];
+
+  //     if (typeof currentPage === "undefined") {
+  //       break;
+  //     }
+
+  //     const nextPage =
+  //       this.pages[i + 1] || new FormattedPage(this.size, this.fontData);
+
+  //     currentPage.pageNumber = i;
+  //     nextPage.pageNumber = i + 1;
+
+  //     // Calculate layout for the current page
+  //     const layoutInfo = currentPage.calculateLayout(
+  //       currentPage.content.substring(0, currentPage.content.length),
+  //       currentPage.formatting.search(
+  //         [0, currentPage.content.length],
+  //         (value, key) => ({
+  //           interval: key,
+  //           format: value,
+  //         })
+  //       ) as unknown as MappedFormat[],
+  //       0,
+  //       i,
+  //       insertLength,
+  //       insertIndex
+  //     );
+  //     const nextPageStartIndex = layoutInfo?.findIndex(
+  //       (info) => info?.page > i
+  //     );
+
+  //     if (nextPageStartIndex !== -1) {
+  //       const overflowText = currentPage.content.substring(nextPageStartIndex);
+  //       const overflowFormatting = currentPage.formatting.search(
+  //         [nextPageStartIndex, Infinity],
+  //         (value, key) => ({
+  //           interval: key,
+  //           format: value,
+  //         })
+  //       ) as unknown as MappedFormat[];
+
+  //       currentPage.delete(nextPageStartIndex, currentPage.content.length);
+  //       nextPage.insert(0, 0, overflowText, overflowFormatting[0].format);
+  //     }
+
+  //     if (nextPage.content.length > 0 && !this.pages[i + 1]) {
+  //       this.pages.push(nextPage);
+  //     }
+  //   }
+
+  //   // update layouts in staggered manner
+  //   this.pages[startPageIndex].updateLayout(
+  //     0,
+  //     this.pages[startPageIndex].content.length,
+  //     insertLength,
+  //     insertIndex
+  //   );
+
+  //   performance.mark("rebalance-ended");
+  //   performance.measure("rebalance", "rebalance-started", "rebalance-ended");
+  // }
+
   rebalancePages(
     startPageIndex: number,
     initialize = false,
-    insertLength: number,
-    insertIndex: number
+    changeLength: number,
+    changeIndex: number,
+    isInsertion: boolean = true
   ) {
     performance.mark("rebalance-started");
-
-    const pageHeight = this.size.height;
 
     let totalPages = this.pages.length;
     if (initialize) {
@@ -1389,59 +1476,14 @@ export class MultiPageEditor {
         ) as unknown as MappedFormat[],
         0,
         i,
-        insertLength,
-        insertIndex
-      );
-      const nextPageStartIndex = layoutInfo?.findIndex(
-        (info) => info?.page > i
+        changeLength,
+        changeIndex
       );
 
-      // // // at least need to query all page layouts to get the index next
-      // const layoutInfos = this.pages
-      //   .map((page) => {
-      //     return page.layout.query(-Infinity, Infinity);
-      //   })
-      //   .flat();
-
-      // const textBeforeCurrent = this.getTextLength(i);
-      // const testinfo = this.getLayoutInfo(
-      //   textBeforeCurrent,
-      //   textBeforeCurrent + currentPage.content.length
-      // );
-
-      // console.info(
-      //   "layoutInfos",
-      //   textBeforeCurrent,
-      //   currentPage.content.length,
-      //   testinfo
-      // );
-
-      // // Find the index where the next page starts
-      // // const nextPageStartIndex = layoutInfos[0]?.layoutInfo?.findIndex(
-      // //   (info) => info?.page > i
-      // // );
-      // let nextPageStartIndex = -1;
-      // let count = 0;
-      // for (let i = 0; i < layoutInfos.length; i++) {
-      //   const layout = layoutInfos[i];
-
-      //   if (nextPageStartIndex > 0) {
-      //     break;
-      //   }
-
-      //   for (let x = 0; x < layout?.layoutInfo?.length; x++) {
-      //     const info = layout.layoutInfo[x];
-
-      //     if (info.page > i) {
-      //       nextPageStartIndex = count;
-      //       break;
-      //     }
-
-      //     count++;
-      //   }
-      // }
+      const nextPageStartIndex = layoutInfo.findIndex((info) => info.page > i);
 
       if (nextPageStartIndex !== -1) {
+        // Handle overflow
         const overflowText = currentPage.content.substring(nextPageStartIndex);
         const overflowFormatting = currentPage.formatting.search(
           [nextPageStartIndex, Infinity],
@@ -1453,10 +1495,66 @@ export class MultiPageEditor {
 
         currentPage.delete(nextPageStartIndex, currentPage.content.length);
         nextPage.insert(0, 0, overflowText, overflowFormatting[0].format);
+      } else if (!isInsertion && nextPage.content.length > 0) {
+        // Handle underflow
+        const nextPageLayout = nextPage.calculateLayout(
+          nextPage.content.substring(0, nextPage.content.length),
+          nextPage.formatting.search(
+            [0, nextPage.content.length],
+            (value, key) => ({
+              interval: key,
+              format: value,
+            })
+          ) as unknown as MappedFormat[],
+          0,
+          i + 1,
+          0,
+          0
+        );
+
+        const contentToMoveIndex = nextPageLayout.findIndex(
+          (info) => info.page > i + 1
+        );
+
+        if (contentToMoveIndex !== -1) {
+          const contentToMove = nextPage.content.substring(
+            0,
+            contentToMoveIndex
+          );
+          const formatToMove = nextPage.formatting.search(
+            [0, contentToMoveIndex],
+            (value, key) => ({
+              interval: key,
+              format: value,
+            })
+          )[0].format;
+
+          currentPage.insert(
+            currentPage.content.length, // TODO: remove newlines
+            currentPage.content.length,
+            contentToMove,
+            formatToMove
+          );
+          nextPage.delete(0, contentToMoveIndex);
+        } else {
+          // If all content from next page fits, move it all
+          currentPage.insert(
+            currentPage.content.length, // TODO: remove newlines
+            currentPage.content.length,
+            nextPage.content.substring(0, nextPage.content.length),
+            nextPage.formatting.search([0, 1], (value) => value)[0]
+          );
+          nextPage.delete(0, nextPage.content.length);
+        }
       }
 
       if (nextPage.content.length > 0 && !this.pages[i + 1]) {
         this.pages.push(nextPage);
+      } else if (nextPage.content.length === 0 && this.pages[i + 1]) {
+        // Remove empty pages
+        this.pages.splice(i + 1, 1);
+        totalPages--;
+        i--; // Recheck this index in the next iteration
       }
     }
 
@@ -1464,8 +1562,8 @@ export class MultiPageEditor {
     this.pages[startPageIndex].updateLayout(
       0,
       this.pages[startPageIndex].content.length,
-      insertLength,
-      insertIndex
+      changeLength,
+      changeIndex
     );
 
     performance.mark("rebalance-ended");
@@ -1482,26 +1580,6 @@ export class MultiPageEditor {
       this.pages[i].updateLayout(0, this.pages[i].content.length);
     }
   }
-
-  // getPageIndexForGlobalIndex(globalIndex: number) {
-  //   let accumIndex = 0;
-  //   for (let i = 0; i < this.pages.length; i++) {
-  //     if (accumIndex + this.pages[i].content.length > globalIndex) {
-  //       return i;
-  //     }
-  //     accumIndex += this.pages[i].content.length;
-  //   }
-  //   return this.pages.length - 1; // need page index, not number
-  //   // return this.pages.length;
-  // }
-
-  // getLocalIndex(globalIndex: number, pageIndex: number) {
-  //   let accumIndex = 0;
-  //   for (let i = 0; i < pageIndex; i++) {
-  //     accumIndex += this.pages[i].content.length;
-  //   }
-  //   return globalIndex - accumIndex;
-  // }
 
   getPageIndexForGlobalIndex(globalIndex: number, withNewlines = true) {
     let accumIndex = 0;

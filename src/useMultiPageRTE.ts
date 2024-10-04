@@ -816,6 +816,7 @@ class FormattedPage {
     let contentIndex = 0;
     let isNewLine = true;
     let isBulletPoint = false;
+    let isHeadline1 = false;
     const bulletIndent = 40; // Adjust as needed
 
     for (let i = 0; i < text.length; i++) {
@@ -826,6 +827,7 @@ class FormattedPage {
         currentY += lineHeight;
         isNewLine = true;
         isBulletPoint = false;
+        isHeadline1 = false;
         continue;
       }
 
@@ -833,6 +835,13 @@ class FormattedPage {
         isBulletPoint = true;
         i++; // Skip the space after the dash
         currentX = bulletIndent; // Indent the text after the bullet
+        // contentIndex++; // ?
+      }
+
+      if (isNewLine && char === "#" && text[i + 1] === " ") {
+        isHeadline1 = true;
+        i++; // Skip the space after the pound
+        // contentIndex++; // ?
       }
 
       contentIndex++;
@@ -848,7 +857,17 @@ class FormattedPage {
         ...defaultStyle,
         fontSize: format?.fontSize ?? defaultStyle.fontSize,
         fontWeight: format?.fontWeight ?? defaultStyle.fontWeight,
+        color: format?.color ?? defaultStyle.color,
+        fontFamily: format?.fontFamily ?? defaultStyle.fontFamily,
+        isLineBreak: format?.isLineBreak ?? defaultStyle.isLineBreak,
+        italic: format?.italic ?? defaultStyle.italic,
+        underline: format?.underline ?? defaultStyle.underline,
       };
+
+      if (isHeadline1) {
+        style.fontSize = 36;
+        // lineHeight = 26;
+      }
 
       let cachedWidth = 0;
       let cachedHeight = 0;
@@ -890,6 +909,16 @@ class FormattedPage {
 
       const capHeight = getCapHeightPx(this.fontData, style.fontSize);
 
+      if (isNewLine) {
+        lineHeight = capHeight;
+      } else {
+        lineHeight = Math.max(lineHeight, capHeight);
+      }
+
+      // if (cachedHeight > 20) {
+      //   console.info("bigger", char, cachedHeight, lineHeight);
+      // }
+
       if (currentX + cachedWidth > this.size.width) {
         currentX = isBulletPoint ? bulletIndent : 0;
         currentY += lineHeight;
@@ -904,8 +933,32 @@ class FormattedPage {
       }
 
       // Add bullet point if necessary
-      if (isBulletPoint && isNewLine) {
+      if (isHeadline1 && isNewLine) {
         layoutInfo.push({
+          realChar: "#",
+          char: "", // hide markdown
+          x: 0, // Adjust as needed
+          y: currentY,
+          width: cachedWidth,
+          height: cachedHeight,
+          capHeight,
+          format: style,
+          page: currentPageNumber,
+        });
+        layoutInfo.push({
+          realChar: " ", // hide markdown, keep everything indexed properly
+          char: "",
+          x: 0,
+          y: currentY,
+          width: cachedWidth,
+          height: cachedHeight,
+          capHeight,
+          format: style,
+          page: currentPageNumber,
+        });
+      } else if (isBulletPoint && isNewLine) {
+        layoutInfo.push({
+          realChar: "-",
           char: "•", // Unicode bullet character
           x: 25, // Adjust as needed
           y: currentY,
@@ -933,13 +986,18 @@ class FormattedPage {
           width: cachedWidth,
           height: cachedHeight,
           capHeight,
-          format,
+          // format, // ?
+          format: style,
           page: currentPageNumber,
         });
       }
 
-      currentX += cachedWidth + letterSpacing;
-      lineHeight = Math.max(lineHeight, capHeight);
+      if (isHeadline1 && isNewLine) {
+        currentX += 0;
+      } else {
+        currentX += cachedWidth + letterSpacing;
+      }
+
       isNewLine = false;
     }
 
@@ -1210,7 +1268,7 @@ export class MultiPageEditor {
       endIndex
     );
 
-    console.info("renderAll", formattedText, layout, combined);
+    // console.info("renderAll", formattedText, layout, combined);
 
     return combined;
   }
@@ -1429,23 +1487,23 @@ export class MultiPageEditor {
           contentIndex += newlinesToAdd;
         }
         // console.info("newlinesTOAdd", newlinesToAdd);
-        const textItems = this.pages[textIndex].formatting.search(
-          [i, i + 1],
-          (value, key) => ({
-            interval: key,
-            format: value,
-          })
-        ) as unknown as MappedFormat[];
+        // const textItems = this.pages[textIndex].formatting.search(
+        //   [i, i + 1],
+        //   (value, key) => ({
+        //     interval: key,
+        //     format: value,
+        //   })
+        // ) as unknown as MappedFormat[];
 
-        const textItem = textItems[textItems.length - 1];
+        // const textItem = textItems[textItems.length - 1];
 
-        if (textItem) {
-          format = textItem.format;
-        }
+        // if (textItem) {
+        //   format = textItem.format;
+        // }
 
-        if (!format) {
-          format = defaultStyle;
-        }
+        // if (!format) {
+        //   format = defaultStyle;
+        // }
 
         // if (charLayout.x === -1 && charLayout.y -1) {
         //   console.info("no position", charLayout.char);
@@ -1453,13 +1511,15 @@ export class MultiPageEditor {
         // }
 
         renderItems.push({
+          realChar: charLayout.realChar ? charLayout.realChar : charLayout.char,
           char: charLayout.char,
           x: charLayout.x,
           y: charLayout.y,
           width: charLayout.width,
           height: charLayout.height,
           capHeight: charLayout.capHeight,
-          format: format,
+          // format: format, // ?
+          format: charLayout.format,
           page: charLayout.page,
         });
 
@@ -1468,13 +1528,14 @@ export class MultiPageEditor {
         if (newlinesToAdd) {
           for (let n = 0; n < newlinesToAdd; n++) {
             renderItems.push({
+              realChar: "\n",
               char: "\n",
               x: charLayout.x,
               y: charLayout.y,
               width: charLayout.width,
               height: charLayout.height,
               capHeight: charLayout.capHeight,
-              format: format,
+              format: charLayout.format,
               page: charLayout.page,
             });
           }

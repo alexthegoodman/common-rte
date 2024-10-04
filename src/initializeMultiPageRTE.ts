@@ -479,9 +479,9 @@ export const initializeMultiPageRTE = (
     // make jsonByPage return only the page, or detect current page here and filter by it?
 
     const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
-    console.info("roughPage render nodes", roughPage);
+    // console.info("roughPage render nodes", roughPage);
 
-    console.info("render nodes", jsonByPage);
+    // console.info("render nodes", jsonByPage);
 
     let globalIndex = 0;
     let globalNlIndex = 0;
@@ -689,11 +689,11 @@ export const initializeMultiPageRTE = (
       });
 
       const charData = masterJson[window.__canvasRTEInsertCharacterIndexNl];
-      console.info(
-        "charData",
-        window.__canvasRTEInsertCharacterIndexNl,
-        charData
-      );
+      //   console.info(
+      //     "charData",
+      //     window.__canvasRTEInsertCharacterIndexNl,
+      //     charData
+      //   );
       const cursor = new Konva.Rect({
         width: 2,
         height: 16,

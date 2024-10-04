@@ -639,6 +639,166 @@ class FormattedPage {
     this.layout.update(start, end, layoutInfo);
   }
 
+  // calculateLayout(
+  //   text: string,
+  //   formats: MappedFormat[],
+  //   offset: number,
+  //   pageNumber: number,
+  //   insertLength: number,
+  //   insertIndex: number
+  // ): RenderItem[] {
+  //   let layoutInfo = [];
+  //   let currentX = 0;
+  //   let currentY = 0;
+  //   let lineHeight = 0;
+
+  //   let currentPageNumber = this.pageNumber;
+  //   const pageHeight = this.size.height; // Assuming you have a pageHeight property
+
+  //   console.info("calculateLayout", pageNumber);
+
+  //   let contentIndex = 0;
+  //   for (let i = 0; i < text.length; i++) {
+  //     const char = text[i];
+
+  //     // if (char === "\n" || format?.isLineBreak) { // TODO: verify that format.isLineBreak is indeed at same index as this char, otherwise may be misplaced
+  //     if (char === "\n") {
+  //       // Move to the next line
+  //       currentX = 0;
+  //       currentY += lineHeight;
+  //       // lineHeight = 0;
+  //       continue;
+  //     }
+
+  //     contentIndex++;
+
+  //     // const format = this.getFormatAtIndex(i + offset, formats);
+  //     const format = this.getFormatAtIndex(contentIndex - 1, formats);
+
+  //     let layoutIndex =
+  //       contentIndex > insertIndex ? contentIndex - insertLength : contentIndex; // minus because from old layout
+
+  //     let prevLayoutInfo = this.layout.queryInfos(layoutIndex - 1);
+  //     let prevLayoutInfoCheck = this.layout.queryInfos(contentIndex - 1);
+
+  //     // console.info("layout at index", prevLayoutInfo);
+
+  //     if (!format?.fontSize) {
+  //       console.warn("no format on char?");
+  //     }
+
+  //     // const fontData = this.getFontData(format.fontFamily);
+  //     const style = {
+  //       ...defaultStyle,
+  //       fontSize: format?.fontSize ? format.fontSize : defaultStyle.fontSize,
+  //       fontWeight: format?.fontWeight
+  //         ? format.fontWeight
+  //         : defaultStyle.fontWeight,
+  //     };
+
+  //     let cachedWidth = 0;
+  //     let cachedHeight = 0;
+
+  //     if (prevLayoutInfoCheck && prevLayoutInfoCheck.char === char) {
+  //       prevLayoutInfo = prevLayoutInfoCheck;
+  //     }
+
+  //     // if (prevLayoutInfo && prevLayoutInfo.char !== char) {
+  //     //   console.info(
+  //     //     "no match on layout ",
+  //     //     currentPageNumber,
+  //     //     layoutIndex,
+  //     //     contentIndex,
+  //     //     insertLength,
+  //     //     insertIndex,
+  //     //     char,
+  //     //     prevLayoutInfo,
+  //     //     prevLayoutInfoCheck
+  //     //   );
+  //     // }
+
+  //     // yes, this caching helps when the chars match, but frequently they don't when a new char is inserted
+  //     // in theory, by providing length of text inserted and insertion index, we can be more likely to grab the cached value
+  //     if (prevLayoutInfo && prevLayoutInfo.char === char) {
+  //       // console.info("prevLayoutInfo", char, prevLayoutInfo);
+
+  //       if (
+  //         prevLayoutInfo?.format.color !== style.color ||
+  //         prevLayoutInfo?.format.fontFamily !== style.fontFamily ||
+  //         prevLayoutInfo?.format.fontSize !== style.fontSize ||
+  //         prevLayoutInfo?.format.fontWeight !== style.fontWeight ||
+  //         prevLayoutInfo?.format.isLineBreak !== style.isLineBreak ||
+  //         prevLayoutInfo?.format.italic !== style.italic ||
+  //         prevLayoutInfo?.format.underline !== style.underline
+  //       ) {
+  //         // console.info(
+  //         //   "difference detected, get new width and height",
+  //         //   prevLayoutInfo,
+  //         //   cachedWidth,
+  //         //   cachedHeight
+  //         // );
+
+  //         const { width, height } = getCharacterBoundingBox(
+  //           this.fontData,
+  //           char,
+  //           style
+  //         );
+
+  //         cachedWidth = width;
+  //         cachedHeight = height;
+  //       } else {
+  //         // no difference detected, uses cached dimensions
+  //         cachedWidth = prevLayoutInfo?.width;
+  //         cachedHeight = prevLayoutInfo?.height;
+  //       }
+  //     } else {
+  //       const { width, height } = getCharacterBoundingBox(
+  //         this.fontData,
+  //         char,
+  //         style
+  //       );
+
+  //       cachedWidth = width;
+  //       cachedHeight = height;
+  //     }
+
+  //     const capHeight = getCapHeightPx(this.fontData, style.fontSize);
+
+  //     // Check if we need to wrap to the next line
+  //     if (currentX + cachedWidth > this.size.width) {
+  //       currentX = 0;
+  //       currentY += lineHeight;
+  //       lineHeight = 0;
+  //     }
+
+  //     // // Check again for new page after line break
+  //     // console.info("check page ", currentY + capHeight, pageHeight);
+  //     if (currentY + capHeight > pageHeight) {
+  //       currentPageNumber++;
+  //       currentY = 0;
+  //       // console.warn("new page", currentPageNumber);
+  //     }
+
+  //     layoutInfo.push({
+  //       char,
+  //       x: currentX ? currentX + letterSpacing : 0,
+  //       y: currentY,
+  //       width: cachedWidth,
+  //       height: cachedHeight,
+  //       capHeight,
+  //       format,
+  //       page: currentPageNumber,
+  //     });
+
+  //     currentX += cachedWidth + letterSpacing;
+  //     lineHeight = Math.max(lineHeight, capHeight);
+  //   }
+
+  //   // console.info("layoutinfo", layoutInfo);
+
+  //   return layoutInfo;
+  // }
+
   calculateLayout(
     text: string,
     formats: MappedFormat[],
@@ -646,54 +806,48 @@ class FormattedPage {
     pageNumber: number,
     insertLength: number,
     insertIndex: number
-  ) {
+  ): RenderItem[] {
     let layoutInfo = [];
     let currentX = 0;
     let currentY = 0;
     let lineHeight = 0;
-
     let currentPageNumber = this.pageNumber;
-    const pageHeight = this.size.height; // Assuming you have a pageHeight property
-
-    console.info("calculateLayout", pageNumber);
-
+    const pageHeight = this.size.height;
     let contentIndex = 0;
+    let isNewLine = true;
+    let isBulletPoint = false;
+    const bulletIndent = 40; // Adjust as needed
+
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
 
-      // if (char === "\n" || format?.isLineBreak) { // TODO: verify that format.isLineBreak is indeed at same index as this char, otherwise may be misplaced
       if (char === "\n") {
-        // Move to the next line
         currentX = 0;
         currentY += lineHeight;
-        // lineHeight = 0;
+        isNewLine = true;
+        isBulletPoint = false;
         continue;
+      }
+
+      if (isNewLine && char === "-" && text[i + 1] === " ") {
+        isBulletPoint = true;
+        i++; // Skip the space after the dash
+        currentX = bulletIndent; // Indent the text after the bullet
       }
 
       contentIndex++;
 
-      // const format = this.getFormatAtIndex(i + offset, formats);
       const format = this.getFormatAtIndex(contentIndex - 1, formats);
-
       let layoutIndex =
-        contentIndex > insertIndex ? contentIndex - insertLength : contentIndex; // minus because from old layout
+        contentIndex > insertIndex ? contentIndex - insertLength : contentIndex;
 
       let prevLayoutInfo = this.layout.queryInfos(layoutIndex - 1);
       let prevLayoutInfoCheck = this.layout.queryInfos(contentIndex - 1);
 
-      // console.info("layout at index", prevLayoutInfo);
-
-      if (!format?.fontSize) {
-        console.warn("no format on char?");
-      }
-
-      // const fontData = this.getFontData(format.fontFamily);
       const style = {
         ...defaultStyle,
-        fontSize: format?.fontSize ? format.fontSize : defaultStyle.fontSize,
-        fontWeight: format?.fontWeight
-          ? format.fontWeight
-          : defaultStyle.fontWeight,
+        fontSize: format?.fontSize ?? defaultStyle.fontSize,
+        fontWeight: format?.fontWeight ?? defaultStyle.fontWeight,
       };
 
       let cachedWidth = 0;
@@ -703,25 +857,7 @@ class FormattedPage {
         prevLayoutInfo = prevLayoutInfoCheck;
       }
 
-      // if (prevLayoutInfo && prevLayoutInfo.char !== char) {
-      //   console.info(
-      //     "no match on layout ",
-      //     currentPageNumber,
-      //     layoutIndex,
-      //     contentIndex,
-      //     insertLength,
-      //     insertIndex,
-      //     char,
-      //     prevLayoutInfo,
-      //     prevLayoutInfoCheck
-      //   );
-      // }
-
-      // yes, this caching helps when the chars match, but frequently they don't when a new char is inserted
-      // in theory, by providing length of text inserted and insertion index, we can be more likely to grab the cached value
       if (prevLayoutInfo && prevLayoutInfo.char === char) {
-        // console.info("prevLayoutInfo", char, prevLayoutInfo);
-
         if (
           prevLayoutInfo?.format.color !== style.color ||
           prevLayoutInfo?.format.fontFamily !== style.fontFamily ||
@@ -731,23 +867,14 @@ class FormattedPage {
           prevLayoutInfo?.format.italic !== style.italic ||
           prevLayoutInfo?.format.underline !== style.underline
         ) {
-          // console.info(
-          //   "difference detected, get new width and height",
-          //   prevLayoutInfo,
-          //   cachedWidth,
-          //   cachedHeight
-          // );
-
           const { width, height } = getCharacterBoundingBox(
             this.fontData,
             char,
             style
           );
-
           cachedWidth = width;
           cachedHeight = height;
         } else {
-          // no difference detected, uses cached dimensions
           cachedWidth = prevLayoutInfo?.width;
           cachedHeight = prevLayoutInfo?.height;
         }
@@ -757,44 +884,64 @@ class FormattedPage {
           char,
           style
         );
-
         cachedWidth = width;
         cachedHeight = height;
       }
 
       const capHeight = getCapHeightPx(this.fontData, style.fontSize);
 
-      // Check if we need to wrap to the next line
       if (currentX + cachedWidth > this.size.width) {
-        currentX = 0;
+        currentX = isBulletPoint ? bulletIndent : 0;
         currentY += lineHeight;
         lineHeight = 0;
       }
 
-      // // Check again for new page after line break
-      // console.info("check page ", currentY + capHeight, pageHeight);
       if (currentY + capHeight > pageHeight) {
         currentPageNumber++;
         currentY = 0;
-        // console.warn("new page", currentPageNumber);
+        isNewLine = true;
+        isBulletPoint = false;
       }
 
-      layoutInfo.push({
-        char,
-        x: currentX ? currentX + letterSpacing : 0,
-        y: currentY,
-        width: cachedWidth,
-        height: cachedHeight,
-        capHeight,
-        format,
-        page: currentPageNumber,
-      });
+      // Add bullet point if necessary
+      if (isBulletPoint && isNewLine) {
+        layoutInfo.push({
+          char: "•", // Unicode bullet character
+          x: 25, // Adjust as needed
+          y: currentY,
+          width: cachedWidth,
+          height: cachedHeight,
+          capHeight,
+          format: style,
+          page: currentPageNumber,
+        });
+        layoutInfo.push({
+          char: " ", // keep everything indexed properly
+          x: 25,
+          y: currentY,
+          width: cachedWidth,
+          height: cachedHeight,
+          capHeight,
+          format: style,
+          page: currentPageNumber,
+        });
+      } else {
+        layoutInfo.push({
+          char,
+          x: currentX ? currentX + letterSpacing : 0,
+          y: currentY,
+          width: cachedWidth,
+          height: cachedHeight,
+          capHeight,
+          format,
+          page: currentPageNumber,
+        });
+      }
 
       currentX += cachedWidth + letterSpacing;
       lineHeight = Math.max(lineHeight, capHeight);
+      isNewLine = false;
     }
-
-    // console.info("layoutinfo", layoutInfo);
 
     return layoutInfo;
   }

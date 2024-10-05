@@ -7,7 +7,7 @@ import {
   loadFont,
   MultiPageEditor,
 } from "./useMultiPageRTE";
-import Konva from "konva";
+import testJson from "./testJson.json";
 
 console.info("Welcome to Common RTE");
 
@@ -130,6 +130,8 @@ const debounceCallback = (content, masterJson) =>
 
 initializeMultiPageRTE(
   testMarkdown,
+  // null,
+  testJson,
   mainTextSize,
   documentSize,
   marginSize,

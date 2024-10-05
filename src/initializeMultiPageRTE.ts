@@ -38,6 +38,7 @@ let selectionDirection = "forward";
 
 export const initializeMultiPageRTE = (
   initialMarkdown: string,
+  initialMasterJson: any,
   mainTextSize: DocumentSize,
   documentSize: DocumentSize,
   marginSize: MarginSize,
@@ -771,20 +772,28 @@ export const initializeMultiPageRTE = (
 
   loadFont((data) => {
     fontData = data;
-    console.info("fontdata loaded, intializing editor", initialMarkdown.length);
+    console.info(
+      "fontdata loaded, intializing editor",
+      initialMarkdown?.length,
+      initialMasterJson?.length
+    );
 
     const multiPageEditor = new MultiPageEditor(mainTextSize, 70, fontData);
 
     editorInstance = multiPageEditor;
 
-    multiPageEditor.insert(
-      0,
-      0,
-      initialMarkdown,
-      defaultStyle,
-      setMasterJson,
-      true
-    );
+    if (initialMasterJson?.length) {
+      multiPageEditor.insertJson(initialMasterJson, setMasterJson);
+    } else if (initialMarkdown?.length) {
+      multiPageEditor.insert(
+        0,
+        0,
+        initialMarkdown,
+        defaultStyle,
+        setMasterJson,
+        true
+      );
+    }
 
     window.addEventListener("keydown", handleKeydown);
     window.addEventListener("scroll", handleScroll);

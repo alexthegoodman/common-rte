@@ -31,6 +31,7 @@ interface FormattedText {
 }
 
 export interface RenderItem {
+  realChar: string;
   char: string;
   x: number;
   y: number;
@@ -135,6 +136,7 @@ window.__canvasRTEInsertCharacterIndexNl = 0;
 
 class LayoutTree {
   public root: LayoutNode;
+  public maxSafeInt: number = 3000;
 
   constructor() {
     this.root = new LayoutNode(0, Infinity);
@@ -256,26 +258,114 @@ class LayoutNode {
       this.left.layoutInfo = this.layoutInfo;
       this.right.layoutInfo = this.layoutInfo;
     }
-
-    // if (this.layoutInfo) {
-    //   // Find the index where we should split the layoutInfo
-    //   const splitIndex = this.layoutInfo.findIndex((item) => item.x >= mid);
-
-    //   if (splitIndex !== -1) {
-    //     // Split the layoutInfo between left and right nodes
-    //     this.left.layoutInfo = this.layoutInfo.slice(0, splitIndex);
-    //     this.right.layoutInfo = this.layoutInfo.slice(splitIndex);
-    //   } else {
-    //     // If all items are in the left half
-    //     this.left.layoutInfo = this.layoutInfo;
-    //     this.right.layoutInfo = [];
-    //   }
-    // }
-
-    // // Clear the layoutInfo from this node as it's no longer a leaf
-    // this.layoutInfo = null;
   }
 }
+
+// class LayoutNode {
+//   public start: number;
+//   public end: number;
+//   public left: LayoutNode | null;
+//   public right: LayoutNode | null;
+//   public layoutInfo: RenderItem[] | null;
+//   public max: number;
+//   public maxSafeInt: number = 3000;
+
+//   constructor(
+//     start: number,
+//     end: number,
+//     layoutInfo: RenderItem[] | null = null
+//   ) {
+//     this.start = start;
+//     this.end = end;
+//     this.left = null;
+//     this.right = null;
+//     this.layoutInfo = layoutInfo;
+//     this.max = end;
+//   }
+
+//   update(start: number, end: number, layoutInfo: RenderItem[]) {
+//     console.log("Updating node", {
+//       currentStart: this.start,
+//       currentEnd: this.end,
+//       updateStart: start,
+//       updateEnd: end,
+//     });
+
+//     if (end <= this.start || start >= this.end) {
+//       console.log("No overlap, returning", {
+//         currentStart: this.start,
+//         currentEnd: this.end,
+//         updateStart: start,
+//         updateEnd: end,
+//       });
+//       return;
+//     }
+
+//     if (start <= this.start && end >= this.end) {
+//       console.log("Full overlap, updating layoutInfo");
+//       this.layoutInfo = layoutInfo;
+//       return;
+//     }
+
+//     if (!this.left && !this.right) {
+//       console.log("Splitting node", {
+//         currentStart: this.start,
+//         currentEnd: this.end,
+//       });
+//       this.split();
+//     }
+
+//     if (this.left) {
+//       console.log("Updating left node", {
+//         leftStart: this.left.start,
+//         leftEnd: this.left.end,
+//       });
+//       this.left.update(start, end, layoutInfo);
+//     }
+//     if (this.right) {
+//       console.log("Updating right node", {
+//         rightStart: this.right.start,
+//         rightEnd: this.right.end,
+//       });
+//       this.right.update(start, end, layoutInfo);
+//     }
+
+//     this.max = Math.max(
+//       this.left ? this.left.max : this.end,
+//       this.right ? this.right.max : this.end
+//     );
+//   }
+
+//   query(start: number, end: number): LayoutNode[] {
+//     if (end <= this.start || start >= this.max) {
+//       return [];
+//     }
+
+//     if (!this.left && !this.right) {
+//       return [new LayoutNode(this.start, this.end, this.layoutInfo)];
+//     }
+
+//     let result: LayoutNode[] = [];
+//     if (this.left) {
+//       result = result.concat(this.left.query(start, end));
+//     }
+//     if (this.right) {
+//       result = result.concat(this.right.query(start, end));
+//     }
+
+//     return result;
+//   }
+
+//   split() {
+//     if (this.end - this.start <= 1) {
+//       return; // Stop splitting if the range is too small
+//     }
+
+//     const mid = Math.floor((this.start + this.end) / 2);
+//     this.left = new LayoutNode(this.start, mid, this.layoutInfo);
+//     this.right = new LayoutNode(mid, this.end, this.layoutInfo);
+//   }
+// }
 
 class FormattedPage {
   //   public content: RopeSequence<any>;
@@ -427,6 +517,104 @@ class FormattedPage {
       "page-insert-started",
       "page-insert-ended"
     );
+  }
+
+  insertJson(json: RenderItem[]) {
+    let currentFormat = null;
+    let formatStart = 0;
+    let formatEnd = 0;
+    let formatDiff = 0;
+    let isNewLine = true;
+    let contentIndex = 0;
+    for (let i = 0; i < json.length; i++) {
+      contentIndex++;
+
+      const renderItem = json[i];
+
+      const prevRenderItem = json[i - 1];
+      const nextRenderItem = json[i + 1];
+
+      if (prevRenderItem?.char === "\n") {
+        // currentX = 0;
+        // currentY += lineHeight;
+        isNewLine = true;
+        // isBulletPoint = false;
+        // isHeadline1 = false;
+        // continue;
+      }
+
+      // if (i < 20) {
+      //   console.info(
+      //     "insertJson",
+      //     renderItem,
+      //     isNewLine,
+      //     renderItem.char === "#",
+      //     nextRenderItem.char === " "
+      //   );
+      // }
+
+      this.content.insert(contentIndex - 1, renderItem.realChar);
+
+      if (
+        isNewLine &&
+        renderItem.realChar === "-" &&
+        nextRenderItem.realChar === " "
+      ) {
+        contentIndex++;
+        this.content.insert(contentIndex - 1, " ");
+        i += 1;
+        continue;
+      }
+
+      if (
+        isNewLine &&
+        renderItem.realChar === "#" &&
+        nextRenderItem.realChar === " "
+      ) {
+        console.info("indent");
+        contentIndex++;
+        this.content.insert(contentIndex - 1, " ");
+        i += 1;
+        continue;
+      }
+
+      if (!currentFormat) {
+        currentFormat = renderItem.format;
+      }
+
+      if (
+        currentFormat?.color !== renderItem.format.color ||
+        currentFormat?.fontFamily !== renderItem.format.fontFamily ||
+        currentFormat?.fontSize !== renderItem.format.fontSize ||
+        currentFormat?.fontWeight !== renderItem.format.fontWeight ||
+        currentFormat?.isLineBreak !== renderItem.format.isLineBreak ||
+        currentFormat?.italic !== renderItem.format.italic ||
+        currentFormat?.underline !== renderItem.format.underline
+      ) {
+        console.info(
+          "formatting insert",
+          formatStart,
+          formatEnd,
+          currentFormat,
+          renderItem
+        );
+
+        this.formatting.insert(
+          new Interval(formatStart, formatEnd - 1),
+          currentFormat
+        );
+
+        formatStart += formatDiff;
+        currentFormat = renderItem.format;
+        formatDiff = 0;
+      }
+
+      formatEnd++;
+      formatDiff++;
+      isNewLine = false;
+
+      // this.layout.update(i, i + 1, [renderItem]); // should be unnecessary as rebalance updates layouts
+    }
   }
 
   shiftIntervalsAfter(index: number, shiftAmount: number) {
@@ -1355,6 +1543,12 @@ export class MultiPageEditor {
     performance.mark("insert-ended");
 
     performance.measure("insert", "insert-started", "insert-ended");
+  }
+
+  insertJson(json: RenderItem[], setMasterJson: any) {
+    this.pages[0].insertJson(json);
+
+    this.renderAndRebalance(0, setMasterJson, true, json.length, 0);
   }
 
   renderAndRebalance(

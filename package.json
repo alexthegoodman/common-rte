@@ -1,6 +1,6 @@
 {
   "name": "common-rte",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Multi-Page Rich Text Editor for Web",
   "main": "index.js",
   "type": "module",
@@ -8,8 +8,7 @@
     "dist": "dist"
   },
   "files": [
-    "dist/**/*",
-    "src/assets/**/*"
+    "dist/**/*"
   ],
   "scripts": {
     "dev": "vite",

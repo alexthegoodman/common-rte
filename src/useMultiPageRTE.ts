@@ -370,7 +370,7 @@ class FormattedPage {
 
     let linesFinished = 0; // one newline for each line
 
-    console.info("text lines", lines);
+    // console.info("text lines", lines);
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -391,13 +391,13 @@ class FormattedPage {
             new Interval(currentIndex, currentIndex + line.length),
             format
           );
-          console.info(
-            "inserted format in insert",
-            this.pageNumber,
-            currentIndex,
-            currentIndex + line.length,
-            format
-          );
+          // console.info(
+          //   "inserted format in insert",
+          //   this.pageNumber,
+          //   currentIndex,
+          //   currentIndex + line.length,
+          //   format
+          // );
 
           totalInsertedLength += line.length;
         }

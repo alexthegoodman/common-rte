@@ -43,7 +43,7 @@ export const initializeMultiPageRTE = (
   marginSize: MarginSize,
   debounceCallback: () => {}
 ) => {
-  const setMasterJson = (json, optionalInsertIndex) => {
+  const setMasterJson = (json, optionalInsertIndex, runCallback = true) => {
     clearTimeout(debounceTimer);
 
     masterJson =
@@ -89,13 +89,18 @@ export const initializeMultiPageRTE = (
 
       renderTextNodes(stage, layer, jsonByPage);
 
-      debounceTimer = setTimeout(() => {
-        // TODO: will need to actually save out formatting data as well
-        // probably restore / save the masterJson, with option to restore from plaintext
-        editorInstance.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
-        const content = editorInstance.getAllContent();
-        debounceCallback(content, masterJson);
-      }, 500);
+      if (runCallback) {
+        debounceTimer = setTimeout(() => {
+          // TODO: will need to actually save out formatting data as well
+          // probably restore / save the masterJson, with option to restore from plaintext
+          // TODO: may want to pop up Are you sure? alert if user closes tab before debounce has ran
+          editorInstance.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
+          const content = editorInstance.getAllContent();
+          debounceCallback(content, masterJson);
+          const lastSavedLabel = document.querySelector("#cmnLastSaved");
+          lastSavedLabel?.setHTMLUnsafe(new Date().toString());
+        }, 3000);
+      }
     }
   };
   const setIsSelectingText = (is) => (isSelectingText = is);
@@ -374,7 +379,12 @@ export const initializeMultiPageRTE = (
       // setMasterJson(combined);
       const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
       console.info("roughPage", roughPage);
-      editorInstance.renderAndRebalance(roughPage, setMasterJson, false);
+      editorInstance.renderAndRebalance(
+        roughPage,
+        (json, optionalInsertIndex) =>
+          setMasterJson(json, optionalInsertIndex, false),
+        false
+      );
     }
   };
 

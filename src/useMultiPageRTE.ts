@@ -370,7 +370,7 @@ class FormattedPage {
 
     let linesFinished = 0; // one newline for each line
 
-    // console.info("text lines", text, lines.length);
+    console.info("text lines", lines);
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -389,6 +389,13 @@ class FormattedPage {
           // Insert new formatting
           this.formatting.insert(
             new Interval(currentIndex, currentIndex + line.length),
+            format
+          );
+          console.info(
+            "inserted format in insert",
+            this.pageNumber,
+            currentIndex,
+            currentIndex + line.length,
             format
           );
 
@@ -425,7 +432,7 @@ class FormattedPage {
   shiftIntervalsAfter(index: number, shiftAmount: number) {
     // Get all intervals
     const allIntervals = this.formatting.search(
-      [-Infinity, Infinity],
+      new Interval(-Infinity, Infinity),
       (value, key) => ({
         interval: key,
         format: value,
@@ -444,15 +451,15 @@ class FormattedPage {
       if (start >= index) {
         // Interval starts after or at the index, shift entirely
         this.formatting.insert(
-          [start + shiftAmount, end + shiftAmount],
+          new Interval(start + shiftAmount, end + shiftAmount),
           format
         );
       } else if (end > index) {
         // Interval overlaps with the index, extend the end
-        this.formatting.insert([start, end + shiftAmount], format);
+        this.formatting.insert(new Interval(start, end + shiftAmount), format);
       } else {
         // Interval is before the index, no change needed
-        this.formatting.insert([start, end], format);
+        this.formatting.insert(new Interval(start, end), format);
       }
     }
     // });
@@ -480,7 +487,7 @@ class FormattedPage {
       typeof nlStart !== "undefined" ? nlStart : start,
       typeof nlEnd !== "undefined" ? nlEnd : end
     );
-    this.formatting.remove([start, end]);
+    this.formatting.remove(new Interval(start, end));
     this.adjustFormatting(start, -deleteLength);
   }
 
@@ -514,17 +521,17 @@ class FormattedPage {
 
     // Get existing formatting in the range
     const existingFormats = this.formatting.search(
-      [formatStart, formatEnd],
+      new Interval(formatStart, formatEnd),
       (value, key) => ({
         interval: key,
         format: value,
       })
     ) as unknown as MappedFormat[];
 
-    // console.info("existing formats", existingFormats);
+    console.info("existing formats", existingFormats);
 
     // Remove existing formatting in the range
-    this.formatting.remove([formatStart, formatEnd]);
+    this.formatting.remove(new Interval(formatStart, formatEnd));
 
     // Apply new formatting
     for (const { interval, format } of existingFormats) {
@@ -558,6 +565,7 @@ class FormattedPage {
         new Interval(formatStart, formatEnd),
         defaultFormatWithChanges
       );
+      console.info("format inserted");
     }
 
     // Update layout for the affected range
@@ -568,11 +576,14 @@ class FormattedPage {
   getFormattedText(start: number, end: number) {
     const text = this.content.substring(start, end);
     // console.info("check text", text.includes("\n"));
-    const formats = this.formatting.search([start, end], (value, key) => ({
-      interval: key,
-      format: value,
-    })) as unknown as MappedFormat[];
-    // console.info("also getFormattedText", start, end, formats);
+    const formats = this.formatting.search(
+      new Interval(start, end),
+      (value, key) => ({
+        interval: key,
+        format: value,
+      })
+    ) as unknown as MappedFormat[];
+    console.info("also getFormattedText", this.pageNumber, start, end, formats);
     return this.mergeTextAndFormatting(text, formats, start);
   }
 
@@ -622,10 +633,13 @@ class FormattedPage {
     insertIndex: number
   ) {
     const text = this.content.substring(start, end);
-    const formats = this.formatting.search([start, end], (value, key) => ({
-      interval: key,
-      format: value,
-    })) as unknown as MappedFormat[];
+    const formats = this.formatting.search(
+      new Interval(start, end),
+      (value, key) => ({
+        interval: key,
+        format: value,
+      })
+    ) as unknown as MappedFormat[];
     // console.info("updateLayout: ", text, formats, start);
     const layoutInfo = this.calculateLayout(
       text,
@@ -835,13 +849,13 @@ class FormattedPage {
         isBulletPoint = true;
         i++; // Skip the space after the dash
         currentX = bulletIndent; // Indent the text after the bullet
-        // contentIndex++; // ?
+        contentIndex++; // ?
       }
 
       if (isNewLine && char === "#" && text[i + 1] === " ") {
         isHeadline1 = true;
         i++; // Skip the space after the pound
-        // contentIndex++; // ?
+        contentIndex++; // ?
       }
 
       contentIndex++;
@@ -864,6 +878,7 @@ class FormattedPage {
         underline: format?.underline ?? defaultStyle.underline,
       };
 
+      // TODO: users should be able to change a headlines size when not knowing markdown was imported (having to remove the # )
       if (isHeadline1) {
         style.fontSize = 36;
         // lineHeight = 26;
@@ -969,7 +984,8 @@ class FormattedPage {
           page: currentPageNumber,
         });
         layoutInfo.push({
-          char: " ", // keep everything indexed properly
+          realChar: " ",
+          char: "", // keep everything indexed properly
           x: 25,
           y: currentY,
           width: cachedWidth,
@@ -1268,7 +1284,7 @@ export class MultiPageEditor {
       endIndex
     );
 
-    // console.info("renderAll", formattedText, layout, combined);
+    console.info("renderAll", formattedText, layout, combined);
 
     return combined;
   }
@@ -1487,19 +1503,19 @@ export class MultiPageEditor {
           contentIndex += newlinesToAdd;
         }
         // console.info("newlinesTOAdd", newlinesToAdd);
-        // const textItems = this.pages[textIndex].formatting.search(
-        //   [i, i + 1],
-        //   (value, key) => ({
-        //     interval: key,
-        //     format: value,
-        //   })
-        // ) as unknown as MappedFormat[];
+        const textItems = this.pages[textIndex].formatting.search(
+          [i, i + 1],
+          (value, key) => ({
+            interval: key,
+            format: value,
+          })
+        ) as unknown as MappedFormat[];
 
-        // const textItem = textItems[textItems.length - 1];
+        const textItem = textItems[textItems.length - 1];
 
-        // if (textItem) {
-        //   format = textItem.format;
-        // }
+        if (textItem) {
+          format = textItem.format;
+        }
 
         // if (!format) {
         //   format = defaultStyle;
@@ -1694,7 +1710,7 @@ export class MultiPageEditor {
         // Handle overflow
         const overflowText = currentPage.content.substring(nextPageStartIndex);
         const overflowFormatting = currentPage.formatting.search(
-          [nextPageStartIndex, Infinity],
+          new Interval(nextPageStartIndex, Infinity),
           (value, key) => ({
             interval: key,
             format: value,
@@ -1708,7 +1724,7 @@ export class MultiPageEditor {
         const nextPageLayout = nextPage.calculateLayout(
           nextPage.content.substring(0, nextPage.content.length),
           nextPage.formatting.search(
-            [0, nextPage.content.length],
+            new Interval(0, nextPage.content.length),
             (value, key) => ({
               interval: key,
               format: value,
@@ -1730,7 +1746,7 @@ export class MultiPageEditor {
             contentToMoveIndex
           );
           const formatToMove = nextPage.formatting.search(
-            [0, contentToMoveIndex],
+            new Interval(0, contentToMoveIndex),
             (value, key) => ({
               interval: key,
               format: value,
@@ -1750,7 +1766,7 @@ export class MultiPageEditor {
             currentPage.content.length, // TODO: remove newlines
             currentPage.content.length,
             nextPage.content.substring(0, nextPage.content.length),
-            nextPage.formatting.search([0, 1], (value) => value)[0]
+            nextPage.formatting.search(new Interval(0, 1), (value) => value)[0]
           );
           nextPage.delete(0, nextPage.content.length);
         }

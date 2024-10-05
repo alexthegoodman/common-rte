@@ -540,6 +540,21 @@ export const initializeMultiPageRTE = (
     for (let i = 0; i < masterJson.length; i++) {
       const charText = masterJson[i];
 
+      //   const nextCharText = masterJson[i + 1];
+      //   if (charText?.realChar === "•" && nextCharText?.realChar === " ") {
+      //     globalIndex--;
+      //     globalIndex--;
+      //     // globalNlIndex--;
+      //   }
+      //   if (charText?.realChar === "#" && nextCharText?.realChar === " ") {
+      //     globalIndex--;
+      //     globalIndex--;
+      //     // globalNlIndex--;
+      //   }
+      //   if (charText?.char === "") {
+      //     globalIndex--;
+      //   }
+
       globalNlIndex++;
 
       if (charText?.char === "\n") {
@@ -617,6 +632,19 @@ export const initializeMultiPageRTE = (
     let contentIndex = 0;
     for (let i = 0; i < masterJson.length; i++) {
       const charText = masterJson[i];
+
+      //   const nextCharText = masterJson[i + 1];
+      //   if (charText?.realChar === "•" && nextCharText?.realChar === " ") {
+      //     contentIndex--;
+      //     contentIndex--;
+      //   }
+      //   if (charText?.realChar === "#" && nextCharText?.realChar === " ") {
+      //     contentIndex--;
+      //     contentIndex--;
+      //   }
+      //   if (charText?.char === "") {
+      //     contentIndex--;
+      //   }
 
       if (charText?.char === "\n") continue;
 

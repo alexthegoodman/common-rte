@@ -42,7 +42,8 @@ export const initializeMultiPageRTE = (
   mainTextSize: DocumentSize,
   documentSize: DocumentSize,
   marginSize: MarginSize,
-  debounceCallback: () => {}
+  debounceCallback: () => {},
+  fontUrl: string // for now just Inter
 ) => {
   const setMasterJson = (json, optionalInsertIndex, runCallback = true) => {
     clearTimeout(debounceTimer);
@@ -846,7 +847,7 @@ export const initializeMultiPageRTE = (
     //     window.removeEventListener("scroll", handleScroll);
     //     window.removeEventListener("scrollend", handleScrollEnd);
     //   };
-  });
+  }, fontUrl);
 
   jsonByPage = getJsonByPage(masterJson);
 };

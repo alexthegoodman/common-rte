@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 // import { useEffect, useMemo, useRef, useState } from "react";
 import { Buffer } from "buffer";
 
-import fontUrl from "../src/assets/fonts/Inter-Regular.ttf";
+// import fontUrl from "../src/assets/fonts/Inter-Regular.ttf";
 
 // @ts-ignore
 window.Buffer = Buffer;
@@ -106,7 +106,10 @@ const blobToBuffer = async (blob: Blob) => {
   return buffer;
 };
 
-export const loadFont = async (setFont: (font: fontkit.Font) => void) => {
+export const loadFont = async (
+  setFont: (font: fontkit.Font) => void,
+  fontUrl: string
+) => {
   try {
     const response = await fetch(fontUrl);
     const blob = await response.blob();

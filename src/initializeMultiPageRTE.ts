@@ -771,7 +771,7 @@ export const initializeMultiPageRTE = (
     }, {} as { [key: number]: RenderItem[] });
   };
 
-  const detachListeners = loadFont((data) => {
+  loadFont((data) => {
     fontData = data;
     console.info(
       "fontdata loaded, intializing editor",
@@ -795,115 +795,109 @@ export const initializeMultiPageRTE = (
         true
       );
     }
+  }, fontUrl);
 
-    window.addEventListener("keydown", handleKeydown);
-    window.addEventListener("scroll", handleScroll);
-    window.addEventListener("scrollend", handleScrollEnd);
+  window.addEventListener("keydown", handleKeydown);
+  window.addEventListener("scroll", handleScroll);
+  window.addEventListener("scrollend", handleScrollEnd);
 
-    const handleFontSize = (e) => {
-      handleFormattingDown({ fontSize: parseInt(e.target.value) });
-    };
+  const handleFontSize = (e) => {
+    handleFormattingDown({ fontSize: parseInt(e.target.value) });
+  };
 
-    const handleBold = (e) => {
-      handleFormattingDown({ fontWeight: "600" });
-    };
+  const handleBold = (e) => {
+    handleFormattingDown({ fontWeight: "600" });
+  };
 
-    const handleItalic = (e) => {
-      handleFormattingDown({ italic: true });
-    };
+  const handleItalic = (e) => {
+    handleFormattingDown({ italic: true });
+  };
 
-    const handleUnderline = (e) => {
-      handleFormattingDown({ underline: true });
-    };
+  const handleUnderline = (e) => {
+    handleFormattingDown({ underline: true });
+  };
 
+  document
+    .getElementById("cmnFontSize")
+    ?.addEventListener("change", handleFontSize);
+  document.getElementById("cmnBold")?.addEventListener("click", handleBold);
+  document.getElementById("cmnItalic")?.addEventListener("click", handleItalic);
+  document
+    .getElementById("cmnUnderline")
+    ?.addEventListener("click", handleUnderline);
+
+  const parent = document.querySelector("#cmnColor");
+  const picker = new Picker(parent);
+
+  picker.onDone = function (color) {
+    handleFormattingDown({ color: color.rgbaString });
+  };
+
+  const handleCircle = (e) => {
+    editorInstance.addVisual({
+      kind: VisualKinds.circle,
+      fill: "red",
+    });
+
+    renderVisuals();
+  };
+
+  document.getElementById("cmnCircle")?.addEventListener("click", handleCircle);
+
+  const handleRectangle = (e) => {};
+
+  document
+    .getElementById("cmnRectangle")
+    ?.addEventListener("click", handleRectangle);
+
+  const handleImageButton = (e) => {};
+
+  document
+    .getElementById("cmnImageButton")
+    ?.addEventListener("click", handleImageButton);
+
+  const handleImageFile = (e) => {};
+
+  document
+    .getElementById("cmnImageFile")
+    ?.addEventListener("change", handleImageFile);
+
+  // TODO: need some detach function for use in React side when remounting?
+  const detach = () => {
+    editorInstance = null;
+    masterJson = null;
+    jsonByPage = null;
+    window.removeEventListener("keydown", handleKeydown);
+    window.removeEventListener("scroll", handleScroll);
+    window.removeEventListener("scrollend", handleScrollEnd);
     document
       .getElementById("cmnFontSize")
-      ?.addEventListener("change", handleFontSize);
-    document.getElementById("cmnBold")?.addEventListener("click", handleBold);
+      ?.removeEventListener("change", handleFontSize);
+    document
+      .getElementById("cmnBold")
+      ?.removeEventListener("click", handleBold);
     document
       .getElementById("cmnItalic")
-      ?.addEventListener("click", handleItalic);
+      ?.removeEventListener("click", handleItalic);
     document
       .getElementById("cmnUnderline")
-      ?.addEventListener("click", handleUnderline);
-
-    const parent = document.querySelector("#cmnColor");
-    const picker = new Picker(parent);
-
-    picker.onDone = function (color) {
-      handleFormattingDown({ color: color.rgbaString });
-    };
-
-    const handleCircle = (e) => {
-      editorInstance.addVisual({
-        kind: VisualKinds.circle,
-        fill: "red",
-      });
-
-      renderVisuals();
-    };
-
+      ?.removeEventListener("click", handleUnderline);
+    picker.destroy();
     document
       .getElementById("cmnCircle")
-      ?.addEventListener("click", handleCircle);
-
-    const handleRectangle = (e) => {};
-
+      ?.removeEventListener("click", handleCircle);
     document
       .getElementById("cmnRectangle")
-      ?.addEventListener("click", handleRectangle);
-
-    const handleImageButton = (e) => {};
-
+      ?.removeEventListener("click", handleRectangle);
     document
       .getElementById("cmnImageButton")
-      ?.addEventListener("click", handleImageButton);
-
-    const handleImageFile = (e) => {};
-
+      ?.removeEventListener("click", handleImageButton);
     document
       .getElementById("cmnImageFile")
-      ?.addEventListener("change", handleImageFile);
-
-    // TODO: need some detach function for use in React side when remounting?
-    const detach = () => {
-      editorInstance = null;
-      masterJson = null;
-      jsonByPage = null;
-      window.removeEventListener("keydown", handleKeydown);
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("scrollend", handleScrollEnd);
-      document
-        .getElementById("cmnFontSize")
-        ?.removeEventListener("change", handleFontSize);
-      document
-        .getElementById("cmnBold")
-        ?.removeEventListener("click", handleBold);
-      document
-        .getElementById("cmnItalic")
-        ?.removeEventListener("click", handleItalic);
-      document
-        .getElementById("cmnUnderline")
-        ?.removeEventListener("click", handleUnderline);
-      picker.destroy();
-      document
-        .getElementById("cmnCircle")
-        ?.removeEventListener("click", handleCircle);
-      document
-        .getElementById("cmnRectangle")
-        ?.removeEventListener("click", handleRectangle);
-      document
-        .getElementById("cmnImageButton")
-        ?.removeEventListener("click", handleImageButton);
-      document
-        .getElementById("cmnImageFile")
-        ?.removeEventListener("change", handleImageFile);
-    };
-
-    return detach;
-  }, fontUrl);
+      ?.removeEventListener("change", handleImageFile);
+  };
 
   jsonByPage = getJsonByPage(masterJson);
 
-  return detachListeners;
+  return detach;
 };

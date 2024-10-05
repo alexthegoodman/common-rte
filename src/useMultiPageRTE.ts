@@ -52,10 +52,10 @@ export type Style = {
   isLineBreak: boolean;
 };
 
-export type DocumentSize = {
+export interface DocumentSize {
   width: number;
   height: number;
-};
+}
 
 export type MarginSize = {
   x: number;

@@ -975,10 +975,10 @@ export const initializeMultiPageRTE = (
 
   const showShapeToolbar = (e) => {
     // remove if already set
-    // if (shapePicker) {
-    //   shapePicker.destroy();
-    //   shapePicker = null;
-    // }
+    if (shapePicker) {
+      shapePicker.destroy();
+      shapePicker = null;
+    }
     document
       .getElementById("cmnShapeWidth")
       ?.removeEventListener("change", handleShapeWidthChange);

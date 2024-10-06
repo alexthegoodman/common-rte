@@ -115,7 +115,7 @@ export const initializeMultiPageRTE = (
   const setSelectionDirection = (dir) => (selectionDirection = dir);
 
   const handleKeydown = (e: KeyboardEvent) => {
-    e.preventDefault();
+    // e.preventDefault();
 
     // some key triggers do not require the editor to be active (?)
     if (editorActive) {
@@ -183,6 +183,8 @@ export const initializeMultiPageRTE = (
         switch (e.key) {
           case "Enter":
             {
+              e.preventDefault();
+
               const character = "\n";
 
               editorInstance?.insert(
@@ -402,8 +404,9 @@ export const initializeMultiPageRTE = (
   const handleShapeClick = (e: KonvaEventObject<MouseEvent>) => {
     // get selectedShape from id
 
+    editorActive = false;
     selectedShape = e.target.attrs.id;
-    console.info("shape e", selectedShape);
+    console.info("shape e", e.target, selectedShape);
     // clear selection
     setFirstSelectedNode(null);
     setLastSelectedNode(null);
@@ -413,7 +416,7 @@ export const initializeMultiPageRTE = (
     window.__canvasRTEInsertCharacterIndexNl = 0;
     renderCursor();
     // show shape toolbar
-    showShapeToolbar();
+    showShapeToolbar(e);
     // rerender visuals with selection data
     renderVisuals();
   };
@@ -713,6 +716,14 @@ export const initializeMultiPageRTE = (
     highlightGroup?.destroy();
   };
 
+  const handleTransformVisual = (e) => {
+    const scaledWidth = e.target.attrs.width * e.target.attrs.scaleX;
+    const scaledHeight = e.target.attrs.height * e.target.attrs.scaleY;
+    console.info("transform", scaledWidth, scaledHeight);
+    document.getElementById("cmnShapeWidth").value = scaledWidth;
+    document.getElementById("cmnShapeHeight").value = scaledHeight;
+  };
+
   let allVisualsAdded = [];
   const renderVisuals = () => {
     console.info("renderVisuals", editorInstance.visuals.length);
@@ -758,6 +769,7 @@ export const initializeMultiPageRTE = (
     }
 
     visualsTransformer.nodes(selectedVisuals);
+    visualsTransformer.on("transform", handleTransformVisual);
     visualsLayer.batchDraw();
 
     // handleShapeClick();
@@ -924,7 +936,32 @@ export const initializeMultiPageRTE = (
     .getElementById("cmnImageFile")
     ?.addEventListener("change", handleImageFile);
 
+  const handleShapeWidthChange = (e) => {
+    const visual = allVisualsAdded.find(
+      (vis) => vis.attrs.id === selectedShape
+    );
+    const width = parseInt(e.target.value);
+    visual.width(width);
+    visual.scaleX(1);
+    visualsTransformer.width(width);
+    editorInstance.updateVisual(selectedShape, { width });
+  };
+
+  const handleShapeHeightChange = (e) => {
+    const visual = allVisualsAdded.find(
+      (vis) => vis.attrs.id === selectedShape
+    );
+    const height = parseInt(e.target.value);
+    visual.height(height);
+    visual.scaleY(1);
+    visualsTransformer.height(height);
+    editorInstance.updateVisual(selectedShape, { height });
+  };
+
+  let shapePicker = null;
+
   const showPrimaryToolbar = () => {
+    shapePicker?.destroy();
     document
       .getElementById("cmnToolbarPrimary")
       ?.setAttribute("style", "display: flex");
@@ -933,13 +970,51 @@ export const initializeMultiPageRTE = (
       ?.setAttribute("style", "display: none");
   };
 
-  const showShapeToolbar = () => {
+  const showShapeToolbar = (e) => {
+    // remove if already set
+    if (shapePicker) {
+      shapePicker.destroy();
+    }
+    document
+      .getElementById("cmnShapeWidth")
+      ?.removeEventListener("change", handleShapeWidthChange);
+    document
+      .getElementById("cmnShapeHeight")
+      ?.removeEventListener("change", handleShapeHeightChange);
+
     document
       .getElementById("cmnToolbarPrimary")
       ?.setAttribute("style", "display: none");
     document
       .getElementById("cmnToolbarShape")
       ?.setAttribute("style", "display: flex");
+
+    const width = e.target.attrs.width;
+    const height = e.target.attrs.height;
+    const fill = e.target.attrs.fill;
+
+    document.getElementById("cmnShapeWidth").value = width;
+    document.getElementById("cmnShapeHeight").value = height;
+
+    document
+      .getElementById("cmnShapeWidth")
+      ?.addEventListener("change", handleShapeWidthChange);
+    document
+      .getElementById("cmnShapeHeight")
+      ?.addEventListener("change", handleShapeHeightChange);
+
+    const parent = document.querySelector("#cmnShapeColor");
+    shapePicker = new Picker(parent);
+
+    shapePicker.onDone = function (color) {
+      const visual = allVisualsAdded.find(
+        (vis) => vis.attrs.id === e.target.attrs.id
+      );
+      visual.fill(color.rgbaString);
+      editorInstance.updateVisual(e.target.attrs.id, {
+        fill: color.rgbaString,
+      });
+    };
   };
 
   showPrimaryToolbar();
@@ -980,6 +1055,7 @@ export const initializeMultiPageRTE = (
       .getElementById("cmnUnderline")
       ?.removeEventListener("click", handleUnderline);
     picker.destroy();
+    shapePicker.destroy();
     document
       .getElementById("cmnCircle")
       ?.removeEventListener("click", handleCircle);
@@ -992,6 +1068,12 @@ export const initializeMultiPageRTE = (
     document
       .getElementById("cmnImageFile")
       ?.removeEventListener("change", handleImageFile);
+    document
+      .getElementById("cmnShapeWidth")
+      ?.removeEventListener("change", handleShapeWidthChange);
+    document
+      .getElementById("cmnShapeHeight")
+      ?.removeEventListener("change", handleShapeHeightChange);
   };
 
   jsonByPage = getJsonByPage(masterJson);

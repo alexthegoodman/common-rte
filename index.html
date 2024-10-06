@@ -70,7 +70,9 @@ import {
 } from "./src/useMultiPageRTE";
 import testJson from "./src/testJson.json";
 
-console.info("Welcome to Common RTE");
+import fontUrl from "./src/assets/fonts/Inter-Regular.ttf";
+
+console.info("Welcome to Common RTE", fontUrl);
 
 const pxPerIn = 96;
 const marginSizeIn = { x: 1, y: 0.5 };
@@ -196,7 +198,8 @@ initializeMultiPageRTE(
   mainTextSize,
   documentSize,
   marginSize,
-  debounceCallback
+  debounceCallback,
+  fontUrl
 );
 
 

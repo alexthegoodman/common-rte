@@ -1,9 +1,12 @@
 {
   "name": "common-rte",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Multi-Page Rich Text Editor for Web",
   "main": "index.js",
   "type": "module",
+  "repository": {
+    "url": "https://github.com/alexthegoodman/common-rte"
+  },
   "directories": {
     "dist": "dist"
   },

@@ -963,6 +963,7 @@ export const initializeMultiPageRTE = (
   const showPrimaryToolbar = () => {
     if (shapePicker) {
       shapePicker.destroy();
+      shapePicker = null;
     }
     document
       .getElementById("cmnToolbarPrimary")
@@ -974,9 +975,10 @@ export const initializeMultiPageRTE = (
 
   const showShapeToolbar = (e) => {
     // remove if already set
-    if (shapePicker) {
-      shapePicker.destroy();
-    }
+    // if (shapePicker) {
+    //   shapePicker.destroy();
+    //   shapePicker = null;
+    // }
     document
       .getElementById("cmnShapeWidth")
       ?.removeEventListener("change", handleShapeWidthChange);

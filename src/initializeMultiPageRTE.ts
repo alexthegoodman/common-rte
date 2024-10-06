@@ -36,6 +36,8 @@ let shadowSize = 25;
 let cursorInterval = null;
 let selectionDirection = "forward";
 
+let selectedShape = null;
+
 export const initializeMultiPageRTE = (
   initialMarkdown: string,
   initialMasterJson: any,
@@ -397,6 +399,25 @@ export const initializeMultiPageRTE = (
     setEditorActive(true);
   };
 
+  const handleShapeClick = (e: KonvaEventObject<MouseEvent>) => {
+    // get selectedShape from id
+
+    selectedShape = e.target.attrs.id;
+    console.info("shape e", selectedShape);
+    // clear selection
+    setFirstSelectedNode(null);
+    setLastSelectedNode(null);
+    clearSelectionHightlight(stage, layer);
+    // clear cursor
+    window.__canvasRTEInsertCharacterIndex = 0;
+    window.__canvasRTEInsertCharacterIndexNl = 0;
+    renderCursor();
+    // show shape toolbar
+    showShapeToolbar();
+    // rerender visuals with selection data
+    renderVisuals();
+  };
+
   // set the insert index to this character
   const handleTextClick = (e: KonvaEventObject<MouseEvent>) => {
     console.info("text click");
@@ -407,6 +428,10 @@ export const initializeMultiPageRTE = (
     insertCursor(e);
 
     clearSelectionHightlight(stage, layer);
+
+    showPrimaryToolbar();
+    selectedShape = null;
+    renderVisuals();
   };
 
   const insertCursor = (e: KonvaEventObject<MouseEvent>) => {
@@ -688,29 +713,54 @@ export const initializeMultiPageRTE = (
     highlightGroup?.destroy();
   };
 
+  let allVisualsAdded = [];
   const renderVisuals = () => {
-    console.info("renderVisuals");
+    console.info("renderVisuals", editorInstance.visuals.length);
     // visualsLayer?.destroyChildren();
+    // visualsTransformer?.detach();
 
-    let allVisualsAdded = [];
+    let selectedVisuals = [];
     for (let x = 0; x < editorInstance.visuals.length; x++) {
-      const pageVisual = editorInstance.visuals[x];
+      let pageVisual = editorInstance.visuals[x];
 
+      console.info("pageVIsual", pageVisual, allVisualsAdded);
+
+      if (pageVisual.id === selectedShape) {
+        selectedVisuals = [];
+        selectedVisuals.push(
+          allVisualsAdded.find((vis) => vis.attrs.id === pageVisual.id)
+        );
+      }
+
+      if (allVisualsAdded.find((vis) => vis.attrs.id === pageVisual.id))
+        continue;
+
+      let numVis = allVisualsAdded.length;
       if (pageVisual.kind === VisualKinds.circle) {
         console.info("adding circle...");
 
-        let numVis = allVisualsAdded.length;
         allVisualsAdded[numVis] = new Konva.Circle({
           ...pageVisual,
           draggable: true,
         });
+      } else if (pageVisual.kind === VisualKinds.rectangle) {
+        console.info("adding rectangle...");
 
-        visualsLayer.add(allVisualsAdded[numVis]);
+        allVisualsAdded[numVis] = new Konva.Rect({
+          ...pageVisual,
+          draggable: true,
+        });
       }
+
+      allVisualsAdded[numVis].on("click", handleShapeClick);
+
+      visualsLayer.add(allVisualsAdded[numVis]);
     }
 
-    visualsTransformer.nodes(allVisualsAdded);
+    visualsTransformer.nodes(selectedVisuals);
     visualsLayer.batchDraw();
+
+    // handleShapeClick();
   };
 
   const renderCursor = () => {
@@ -755,6 +805,11 @@ export const initializeMultiPageRTE = (
 
       // Start the animation
       anim.start();
+    } else if (
+      window.__canvasRTEInsertCharacterIndex === 0 ||
+      window.__canvasRTEInsertCharacterIndexNl === 0
+    ) {
+      cursorGroup?.destroy();
     }
   };
 
@@ -844,7 +899,14 @@ export const initializeMultiPageRTE = (
 
   document.getElementById("cmnCircle")?.addEventListener("click", handleCircle);
 
-  const handleRectangle = (e) => {};
+  const handleRectangle = (e) => {
+    editorInstance.addVisual({
+      kind: VisualKinds.rectangle,
+      fill: "red",
+    });
+
+    renderVisuals();
+  };
 
   document
     .getElementById("cmnRectangle")
@@ -862,7 +924,26 @@ export const initializeMultiPageRTE = (
     .getElementById("cmnImageFile")
     ?.addEventListener("change", handleImageFile);
 
-  // TODO: need some detach function for use in React side when remounting?
+  const showPrimaryToolbar = () => {
+    document
+      .getElementById("cmnToolbarPrimary")
+      ?.setAttribute("style", "display: flex");
+    document
+      .getElementById("cmnToolbarShape")
+      ?.setAttribute("style", "display: none");
+  };
+
+  const showShapeToolbar = () => {
+    document
+      .getElementById("cmnToolbarPrimary")
+      ?.setAttribute("style", "display: none");
+    document
+      .getElementById("cmnToolbarShape")
+      ?.setAttribute("style", "display: flex");
+  };
+
+  showPrimaryToolbar();
+
   const detach = () => {
     editorInstance = null;
     masterJson = null;

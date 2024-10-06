@@ -7,7 +7,7 @@
         <meta http-equiv="Expires" content="0" />
     </head>
     <body>
-        <div class="toolbar">
+        <div id="cmnToolbarPrimary" class="toolbar">
           <label>Alter Text:</label>
           <button id="cmnColor">Color</button>
           <select id="cmnFontSize">
@@ -29,6 +29,14 @@
           <input id="cmnImageFile" type="file" class="hidden" />
           <span>Last Saved:</span>
           <span id="cmnLastSaved"></span>
+        </div>
+        <div id="cmnToolbarShape" class="toolbar">
+          <label>Shape Properties:</label>
+          <label>Width</label>
+          <input id="cmnShapeWidth" type="text" name="width" />
+          <label>Height</label>
+          <input id="cmnShapeHeight" type="text" name="height" />
+          <button id="cmnShapeColor">Color</button>
         </div>
         <div id="cmnContainer"></div>
         <script type="module" src="./src/index.ts"></script>

@@ -1347,7 +1347,7 @@ export class MultiPageEditor {
     return count;
   }
 
-  addVisual(data) {
+  addVisual(data: Partial<Visual>) {
     this.visuals.push({
       ...defaultVisual,
       id: uuidv4(),

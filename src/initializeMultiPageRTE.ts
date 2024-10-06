@@ -1055,13 +1055,13 @@ export const initializeMultiPageRTE = (
       .getElementById("cmnUnderline")
       ?.removeEventListener("click", handleUnderline);
 
-    if (picker) {
-      picker.destroy();
-    }
+    // if (picker) {
+    //   picker.destroy();
+    // }
 
-    if (shapePicker) {
-      shapePicker.destroy();
-    }
+    // if (shapePicker) {
+    //   shapePicker.destroy();
+    // }
 
     document
       .getElementById("cmnCircle")

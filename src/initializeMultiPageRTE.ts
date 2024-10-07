@@ -769,13 +769,19 @@ export const initializeMultiPageRTE = (
       } else if (pageVisual.kind === VisualKinds.image) {
         console.info("rendering image...");
 
-        Konva.Image.fromURL(pageVisual.url, function (image) {
-          // image is Konva.Image instance
-          console.info("Konva.Image", image);
-          allVisualsAdded[numVis] = image;
-          finishVisual(allVisualsAdded, numVis);
-          finishVisuals(selectedVisuals);
-        });
+        Konva.Image.fromURL(
+          pageVisual.url,
+          function (image) {
+            // image is Konva.Image instance
+            console.info("Konva.Image", image);
+            allVisualsAdded[numVis] = image;
+            finishVisual(allVisualsAdded, numVis);
+            finishVisuals(selectedVisuals);
+          },
+          function (e) {
+            console.error("Konva.Image error", e);
+          }
+        );
       }
     }
 

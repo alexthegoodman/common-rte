@@ -767,21 +767,20 @@ export const initializeMultiPageRTE = (
         });
         finishVisual(allVisualsAdded, numVis);
       } else if (pageVisual.kind === VisualKinds.image) {
-        console.info("rendering image...");
+        console.info("rendering image...", pageVisual.url);
 
-        Konva.Image.fromURL(
-          pageVisual.url,
-          function (image) {
-            // image is Konva.Image instance
-            console.info("Konva.Image", image);
-            allVisualsAdded[numVis] = image;
-            finishVisual(allVisualsAdded, numVis);
-            finishVisuals(selectedVisuals);
-          },
-          function (e) {
-            console.error("Konva.Image error", e);
-          }
-        );
+        var imageObj = new Image();
+        imageObj.onload = function () {
+          var image = new Konva.Image({
+            ...pageVisual,
+            image: imageObj,
+          });
+
+          allVisualsAdded[numVis] = image;
+          finishVisual(allVisualsAdded, numVis);
+          finishVisuals(selectedVisuals);
+        };
+        imageObj.src = pageVisual.url;
       }
     }
 

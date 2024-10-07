@@ -757,6 +757,7 @@ export const initializeMultiPageRTE = (
           ...pageVisual,
           draggable: true,
         });
+        finishVisual(allVisualsAdded, numVis);
       } else if (pageVisual.kind === VisualKinds.rectangle) {
         console.info("rendering rectangle...");
 
@@ -764,26 +765,34 @@ export const initializeMultiPageRTE = (
           ...pageVisual,
           draggable: true,
         });
+        finishVisual(allVisualsAdded, numVis);
       } else if (pageVisual.kind === VisualKinds.image) {
         console.info("rendering image...");
 
         Konva.Image.fromURL(pageVisual.url, function (image) {
           // image is Konva.Image instance
           allVisualsAdded[numVis] = image;
+          finishVisual(allVisualsAdded, numVis);
+          finishVisuals(selectedVisuals);
         });
       }
-
-      allVisualsAdded[numVis].on("click", handleShapeClick);
-
-      visualsLayer.add(allVisualsAdded[numVis]);
-      // visualsLayer.draw(); // ?
     }
 
+    finishVisuals(selectedVisuals);
+
+    // handleShapeClick();
+  };
+
+  const finishVisual = (allVisualsAdded, numVis) => {
+    allVisualsAdded[numVis].on("click", handleShapeClick);
+    visualsLayer.add(allVisualsAdded[numVis]);
+    // visualsLayer.draw(); // ?
+  };
+
+  const finishVisuals = (selectedVisuals) => {
     visualsTransformer.nodes(selectedVisuals);
     visualsTransformer.on("transform", handleTransformVisual);
     visualsLayer.batchDraw();
-
-    // handleShapeClick();
   };
 
   const renderCursor = () => {

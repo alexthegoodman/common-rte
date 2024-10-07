@@ -103,7 +103,7 @@ export const initializeMultiPageRTE = (
           // TODO: may want to pop up Are you sure? alert if user closes tab before debounce has ran
           editorInstance.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
           const content = editorInstance.getAllContent();
-          debounceCallback(content, masterJson);
+          debounceCallback(content, masterJson, editorInstance.visuals);
           const lastSavedLabel = document.querySelector("#cmnLastSaved");
           lastSavedLabel?.setHTMLUnsafe(new Date().toString());
         }, 3000);

@@ -774,6 +774,7 @@ export const initializeMultiPageRTE = (
           var image = new Konva.Image({
             ...pageVisual,
             image: imageObj,
+            draggable: true,
           });
 
           allVisualsAdded[numVis] = image;

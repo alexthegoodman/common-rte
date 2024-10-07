@@ -45,7 +45,8 @@ export const initializeMultiPageRTE = (
   documentSize: DocumentSize,
   marginSize: MarginSize,
   debounceCallback: () => {},
-  fontUrl: string // for now just Inter
+  fontUrl: string, // for now just Inter
+  uploadImageHandler: () => {}
 ) => {
   const setMasterJson = (json, optionalInsertIndex, runCallback = true) => {
     clearTimeout(debounceTimer);
@@ -748,24 +749,32 @@ export const initializeMultiPageRTE = (
 
       let numVis = allVisualsAdded.length;
       if (pageVisual.kind === VisualKinds.circle) {
-        console.info("adding circle...");
+        console.info("rendering circle...");
 
         allVisualsAdded[numVis] = new Konva.Circle({
           ...pageVisual,
           draggable: true,
         });
       } else if (pageVisual.kind === VisualKinds.rectangle) {
-        console.info("adding rectangle...");
+        console.info("rendering rectangle...");
 
         allVisualsAdded[numVis] = new Konva.Rect({
           ...pageVisual,
           draggable: true,
+        });
+      } else if (pageVisual.kind === VisualKinds.image) {
+        console.info("rendering image...");
+
+        Konva.Image.fromURL(pageVisual.url, function (image) {
+          // image is Konva.Image instance
+          allVisualsAdded[numVis] = image;
         });
       }
 
       allVisualsAdded[numVis].on("click", handleShapeClick);
 
       visualsLayer.add(allVisualsAdded[numVis]);
+      // visualsLayer.draw(); // ?
     }
 
     visualsTransformer.nodes(selectedVisuals);
@@ -924,13 +933,45 @@ export const initializeMultiPageRTE = (
     .getElementById("cmnRectangle")
     ?.addEventListener("click", handleRectangle);
 
-  const handleImageButton = (e) => {};
+  const handleImageButton = (e) => {
+    document.getElementById("cmnImageFile")?.click();
+  };
 
   document
     .getElementById("cmnImageButton")
     ?.addEventListener("click", handleImageButton);
 
-  const handleImageFile = (e) => {};
+  const handleImageFile = (e) => {
+    const file = e.target["files"][0];
+    const reader = new FileReader();
+
+    let fileName = file.name;
+    let fileSize = file.size;
+    let fileType = file.type;
+
+    reader.onload = async function (item) {
+      const base64 = item?.target?.result as string;
+      let fileData = base64;
+
+      console.info("reader.onload form values", fileName, fileSize, fileType);
+
+      const publicUrl = await uploadImageHandler(
+        fileName,
+        fileSize,
+        fileType,
+        fileData
+      );
+
+      editorInstance.addVisual({
+        kind: VisualKinds.image,
+        url: publicUrl,
+      });
+
+      renderVisuals();
+    };
+
+    reader.readAsDataURL(file);
+  };
 
   document
     .getElementById("cmnImageFile")
@@ -1059,13 +1100,15 @@ export const initializeMultiPageRTE = (
       .getElementById("cmnUnderline")
       ?.removeEventListener("click", handleUnderline);
 
-    // if (picker) {
-    //   picker.destroy();
-    // }
+    if (picker) {
+      picker.destroy();
+      picker = null;
+    }
 
-    // if (shapePicker) {
-    //   shapePicker.destroy();
-    // }
+    if (shapePicker) {
+      shapePicker.destroy();
+      shapePicker = null;
+    }
 
     document
       .getElementById("cmnCircle")

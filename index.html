@@ -196,6 +196,40 @@ In embracing these future trends and leveraging the power of VR technology in ed
 
 // const testMarkdown = "Welcome";
 
+async function uploadImage(
+  fileName,
+  fileSize,
+  fileType,
+  fileData
+) {
+  let results = await fetch('http://localhost:3000/graphql', {
+    method: 'POST',
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      mutation: `{
+        mutation SimpleUploadMutation(
+          $fileName: String
+          $fileSize: Int
+          $fileType: String
+          $fileData: String
+        ) {
+          simpleUpload(
+            fileName: "${fileName}"
+            fileSize: "${fileSize}"
+            fileType: "${fileType}"
+            fileData: "${fileData}"
+          )
+        }
+      }`
+    })
+  })
+  let imageData = await results.json();
+  console.info("imageData", imageData);
+  return imageData.data.url;
+}
+
 const debounceCallback = (content, masterJson) =>
   console.info("debounce content", masterJson);
 
@@ -207,7 +241,8 @@ initializeMultiPageRTE(
   documentSize,
   marginSize,
   debounceCallback,
-  fontUrl
+  fontUrl,
+  uploadImage
 );
 
 

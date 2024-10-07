@@ -77,6 +77,7 @@ export interface Visual {
   height: number;
   fill: string;
   page: number;
+  url: string;
 }
 
 export const defaultVisual: Visual = {

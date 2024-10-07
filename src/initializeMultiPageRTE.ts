@@ -771,6 +771,7 @@ export const initializeMultiPageRTE = (
 
         Konva.Image.fromURL(pageVisual.url, function (image) {
           // image is Konva.Image instance
+          console.info("Konva.Image", image);
           allVisualsAdded[numVis] = image;
           finishVisual(allVisualsAdded, numVis);
           finishVisuals(selectedVisuals);
@@ -786,7 +787,7 @@ export const initializeMultiPageRTE = (
   const finishVisual = (allVisualsAdded, numVis) => {
     allVisualsAdded[numVis].on("click", handleShapeClick);
     visualsLayer.add(allVisualsAdded[numVis]);
-    // visualsLayer.draw(); // ?
+    visualsLayer.draw(); // ?
   };
 
   const finishVisuals = (selectedVisuals) => {

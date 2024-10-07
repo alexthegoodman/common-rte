@@ -37,6 +37,8 @@ let cursorInterval = null;
 let selectionDirection = "forward";
 
 let selectedShape = null;
+let picker = null;
+let shapePicker = null;
 
 export const initializeMultiPageRTE = (
   initialMarkdown: string,
@@ -903,7 +905,7 @@ export const initializeMultiPageRTE = (
     ?.addEventListener("click", handleUnderline);
 
   const parent = document.querySelector("#cmnColor");
-  const picker = new Picker(parent);
+  picker = new Picker(parent);
 
   picker.onDone = function (color) {
     handleFormattingDown({ color: color.rgbaString });
@@ -998,8 +1000,6 @@ export const initializeMultiPageRTE = (
     visualsTransformer.height(height);
     editorInstance.updateVisual(selectedShape, { height });
   };
-
-  let shapePicker = null;
 
   const showPrimaryToolbar = () => {
     if (shapePicker) {

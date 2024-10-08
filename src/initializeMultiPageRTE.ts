@@ -924,6 +924,8 @@ export const initializeMultiPageRTE = (
     }
 
     multiPageEditor.visuals = initialVisualsJson;
+
+    renderVisuals();
   }, fontUrl);
 
   window.addEventListener("keydown", handleKeydown);

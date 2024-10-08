@@ -43,6 +43,7 @@ let shapePicker = null;
 export const initializeMultiPageRTE = (
   initialMarkdown: string,
   initialMasterJson: any,
+  initialVisualsJson: any,
   mainTextSize: DocumentSize,
   documentSize: DocumentSize,
   marginSize: MarginSize,
@@ -889,6 +890,8 @@ export const initializeMultiPageRTE = (
         true
       );
     }
+
+    multiPageEditor.visuals = initialVisualsJson;
   }, fontUrl);
 
   window.addEventListener("keydown", handleKeydown);

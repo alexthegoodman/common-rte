@@ -98,19 +98,24 @@ export const initializeMultiPageRTE = (
       renderTextNodes(stage, layer, jsonByPage);
 
       if (runCallback) {
-        debounceTimer = setTimeout(() => {
-          // TODO: will need to actually save out formatting data as well
-          // probably restore / save the masterJson, with option to restore from plaintext
-          // TODO: may want to pop up Are you sure? alert if user closes tab before debounce has ran
-          editorInstance.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
-          const content = editorInstance.getAllContent();
-          debounceCallback(content, masterJson, editorInstance.visuals);
-          const lastSavedLabel = document.querySelector("#cmnLastSaved");
-          lastSavedLabel?.setHTMLUnsafe(new Date().toString());
-        }, 3000);
+        startDebounceTimeout();
       }
     }
   };
+
+  const startDebounceTimeout = () => {
+    debounceTimer = setTimeout(() => {
+      // TODO: will need to actually save out formatting data as well
+      // probably restore / save the masterJson, with option to restore from plaintext
+      // TODO: may want to pop up Are you sure? alert if user closes tab before debounce has ran
+      editorInstance.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
+      const content = editorInstance.getAllContent();
+      debounceCallback(content, masterJson, editorInstance.visuals);
+      const lastSavedLabel = document.querySelector("#cmnLastSaved");
+      lastSavedLabel?.setHTMLUnsafe(new Date().toString());
+    }, 3000);
+  };
+
   const setIsSelectingText = (is) => (isSelectingText = is);
   const setFirstSelectedNode = (node) => (firstSelectedNode = node);
   const setLastSelectedNode = (node) => (lastSelectedNode = node);
@@ -425,6 +430,19 @@ export const initializeMultiPageRTE = (
     renderVisuals();
   };
 
+  const handleDragVisual = (e) => {
+    const { x, y } = e.target.attrs;
+
+    clearTimeout(debounceTimer);
+
+    editorInstance.updateVisual(selectedShape, {
+      x,
+      y,
+    });
+
+    startDebounceTimeout();
+  };
+
   // set the insert index to this character
   const handleTextClick = (e: KonvaEventObject<MouseEvent>) => {
     console.info("text click");
@@ -720,12 +738,23 @@ export const initializeMultiPageRTE = (
     highlightGroup?.destroy();
   };
 
-  const handleTransformVisual = (e) => {
+  const handleTransformVisual = (e, selectedVisuals) => {
+    clearTimeout(debounceTimer);
+
     const scaledWidth = e.target.attrs.width * e.target.attrs.scaleX;
     const scaledHeight = e.target.attrs.height * e.target.attrs.scaleY;
+
     console.info("transform", scaledWidth, scaledHeight);
+
     document.getElementById("cmnShapeWidth").value = scaledWidth;
     document.getElementById("cmnShapeHeight").value = scaledHeight;
+
+    editorInstance.updateVisual(selectedShape, {
+      width: scaledWidth,
+      height: scaledHeight,
+    });
+
+    startDebounceTimeout();
   };
 
   let allVisualsAdded = [];
@@ -793,13 +822,16 @@ export const initializeMultiPageRTE = (
 
   const finishVisual = (allVisualsAdded, numVis) => {
     allVisualsAdded[numVis].on("click", handleShapeClick);
+    allVisualsAdded[numVis].on("dragmove", handleDragVisual);
     visualsLayer.add(allVisualsAdded[numVis]);
     visualsLayer.draw(); // ?
   };
 
   const finishVisuals = (selectedVisuals) => {
     visualsTransformer.nodes(selectedVisuals);
-    visualsTransformer.on("transform", handleTransformVisual);
+    visualsTransformer.on("transform", (e) =>
+      handleTransformVisual(e, selectedVisuals)
+    );
     visualsLayer.batchDraw();
   };
 

@@ -470,7 +470,13 @@ class FormattedPage {
   //   );
   // }
 
-  insert(index: number, nlIndex: number, text: string, format: Style) {
+  insert(
+    index: number,
+    nlIndex: number,
+    text: string,
+    format: Style,
+    callback = () => {}
+  ) {
     // if (text === "\n") {
     //   console.info("text is newline");
     // }
@@ -534,7 +540,9 @@ class FormattedPage {
     }
 
     // Shift all intervals after the entire insertion
-    this.shiftIntervalsAfter(index, totalInsertedLength);
+    // TODO: needs to happen for every page?
+    // this.shiftIntervalsAfter(index, totalInsertedLength);
+    callback(index, totalInsertedLength);
 
     performance.mark("page-insert-ended");
     performance.measure(
@@ -694,7 +702,13 @@ class FormattedPage {
   }
 
   // nl for newlines because content contains newlines
-  delete(start: number, end: number, nlStart: number, nlEnd: number) {
+  delete(
+    start: number,
+    end: number,
+    nlStart: number,
+    nlEnd: number,
+    callback = () => {}
+  ) {
     const deleteLength = end - start;
     this.content.remove(
       typeof nlStart !== "undefined" ? nlStart : start,
@@ -702,6 +716,7 @@ class FormattedPage {
     );
     this.formatting.remove(new Interval(start, end)); // TODO: needs value param
     this.adjustFormatting(start, -deleteLength);
+    callback();
   }
 
   adjustFormatting(index: number, length: number) {
@@ -1549,11 +1564,18 @@ export class MultiPageEditor {
     //   adjustedEndLocal
     // );
 
+    const callback = (index) => {
+      const diff = startLocalIndex - endLocalIndex;
+      // console.info("diff", diff);
+      this.shiftAllFormats(endLocalIndex, diff);
+    };
+
     this.pages[startPageIndex].delete(
       startLocalIndex,
       endLocalIndex,
       adjustedStartLocal,
-      adjustedEndLocal
+      adjustedEndLocal,
+      callback
     );
 
     // console.info("deleted");
@@ -1673,7 +1695,17 @@ export class MultiPageEditor {
 
     // console.info("insert indexes: ", pageIndex, localIndex);
 
-    this.pages[pageIndex].insert(localIndex, localNlIndex, text, format);
+    const callback = (index, totalInsertedLength) => {
+      this.shiftAllFormats(index, totalInsertedLength);
+    };
+
+    this.pages[pageIndex].insert(
+      localIndex,
+      localNlIndex,
+      text,
+      format,
+      callback
+    );
 
     this.renderAndRebalance(
       pageIndex,
@@ -1692,6 +1724,13 @@ export class MultiPageEditor {
     this.pages[0].insertJson(json);
 
     this.renderAndRebalance(0, setMasterJson, true, json.length, 0);
+  }
+
+  shiftAllFormats(index, totalInsertedLength) {
+    for (let i = 0; i < this.pages.length; i++) {
+      const currentPage = this.pages[i];
+      currentPage.shiftIntervalsAfter(index, totalInsertedLength);
+    }
   }
 
   renderAndRebalance(
@@ -2067,7 +2106,10 @@ export class MultiPageEditor {
         ) as unknown as MappedFormat[];
 
         currentPage.delete(nextPageStartIndex, currentPage.content.length);
-        nextPage.insert(0, 0, overflowText, overflowFormatting[0].format);
+        const nextPageFormat = overflowFormatting[0]?.format
+          ? overflowFormatting[0].format
+          : defaultStyle;
+        nextPage.insert(0, 0, overflowText, nextPageFormat);
       } else if (!isInsertion && nextPage.content.length > 0) {
         // Handle underflow
         const nextPageLayout = nextPage.calculateLayout(

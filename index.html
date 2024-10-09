@@ -47,6 +47,42 @@
               font-weight: normal;
               font-style: normal;
             }
+            @font-face {
+              font-family: "SixtyfourConvergence";
+              src: url("./src/assets/fonts/SixtyfourConvergence[BLED\,SCAN\,XELA\,YELA].ttf");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "Playfair";
+              src: url("./src/assets/fonts/Playfair[opsz\,wdth\,wght].ttf");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "Oswald";
+              src: url("./src/assets/fonts/Oswald[wght].ttf");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "Raleway";
+              src: url("./src/assets/fonts/Raleway[wght].ttf");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "PT Sans";
+              src: url("./src/assets/fonts/PT_Sans-Web-Regular.ttf");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "PT Serif";
+              src: url("./src/assets/fonts/PT_Serif-Web-Regular.ttf");
+              font-weight: normal;
+              font-style: normal;
+            }
             .toolbar {
               display: flex;
               flex-direction: row;
@@ -66,6 +102,24 @@
           <div className="preloadFont" style="font-family: 'Inter'">
             .
           </div>
+          <div className="preloadFont" style="font-family: 'SixtyfourConvergence'">
+            .
+          </div>
+          <div className="preloadFont" style="font-family: 'Playfair'">
+            .
+          </div>
+          <div className="preloadFont" style="font-family: 'Oswald'">
+            .
+          </div>
+          <div className="preloadFont" style="font-family: 'Raleway'">
+            .
+          </div>
+          <div className="preloadFont" style="font-family: 'PT Sans'">
+            .
+          </div>
+          <div className="preloadFont" style="font-family: 'PT Serif'">
+            .
+          </div>
           <script type="module">
             // @ts-nocheck
 
@@ -73,14 +127,20 @@ import { initializeMultiPageRTE } from "./src/initializeMultiPageRTE";
 import {
   defaultStyle,
   // DocumentSize,
-  loadFont,
+  // loadFonts,
   MultiPageEditor,
 } from "./src/useMultiPageRTE";
 import testJson from "./src/testJson.json";
 
-import fontUrl from "./src/assets/fonts/Inter-Regular.ttf";
+import fontUrlInter from "./src/assets/fonts/Inter-Regular.ttf";
+import fontUrlSixtyfour from "./src/assets/fonts/SixtyfourConvergence[BLED\,SCAN\,XELA\,YELA].ttf"
+import fontUrlPlayfair from "./src/assets/fonts/Playfair[opsz\,wdth\,wght].ttf"
+import fontUrlOswald from "./src/assets/fonts/Oswald[wght].ttf"
+import fontUrlRaleway from "./src/assets/fonts/Raleway[wght].ttf";
+import fontUrlPTSans from "./src/assets/fonts/PT_Sans-Web-Regular.ttf"
+import fontUrlPTSerif from "./src/assets/fonts/PT_Serif-Web-Regular.ttf"
 
-console.info("Welcome to Common RTE", fontUrl);
+console.info("Welcome to Common RTE");
 
 const pxPerIn = 96;
 const marginSizeIn = { x: 1, y: 0.5 };
@@ -230,19 +290,44 @@ async function uploadImage(
   return imageData.data.url;
 }
 
-const debounceCallback = (content, masterJson) =>
-  console.info("debounce content", masterJson);
+const debounceCallback = (content, masterJson, masterVisuals) =>
+  console.info("debounce content", masterJson, masterVisuals);
 
 initializeMultiPageRTE(
   testMarkdown,
-  // null, // test null
-  testJson, // text json
+  null, // test null
+  // testJson, // text json
   [], // visuals
   mainTextSize,
   documentSize,
   marginSize,
   debounceCallback,
-  fontUrl,
+  [
+    {
+      name: "Inter", 
+      url: fontUrlInter
+    },
+    {
+      name: "Oswald",
+      url: fontUrlOswald
+    },
+    {
+      name: "Playfair",
+      url: fontUrlPlayfair
+    },
+    {
+      name: "Raleway",
+      url: fontUrlRaleway
+    },
+    {
+      name: "PT Sans",
+      url: fontUrlPTSans
+    },
+    {
+      name: "PT Serif",
+      url: fontUrlPTSerif
+    }
+  ],
   uploadImage
 );
 

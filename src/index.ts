@@ -2,6 +2,6 @@ export { initializeMultiPageRTE } from "./initializeMultiPageRTE";
 export {
   defaultStyle,
   // DocumentSize,
-  loadFont,
+  loadFonts,
   MultiPageEditor,
 } from "./useMultiPageRTE";

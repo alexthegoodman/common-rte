@@ -30,6 +30,12 @@ interface FormattedText {
   format: Style | null;
 }
 
+export interface FontData {
+  url: string;
+  name: string;
+  font?: fontkit.Font;
+}
+
 export interface RenderItem {
   realChar: string;
   char: string;
@@ -95,11 +101,17 @@ export const defaultStyle: Style = {
   color: "black",
   fontSize: 16,
   fontWeight: "normal",
-  fontFamily: "Inter",
+  fontFamily: "PT Serif",
   italic: false,
   underline: false,
   isLineBreak: false,
 };
+
+export interface KerningCache {
+  [key: string]: number;
+}
+
+const kerningCache: KerningCache = {};
 
 const blobToBuffer = async (blob: Blob) => {
   const arrayBuffer = await blob.arrayBuffer();
@@ -107,16 +119,25 @@ const blobToBuffer = async (blob: Blob) => {
   return buffer;
 };
 
-export const loadFont = async (
-  setFont: (font: fontkit.Font) => void,
-  fontUrl: string
+export const loadFonts = async (
+  setFonts: (font: fontkit.Font) => void,
+  fontUrls: string[]
 ) => {
   try {
-    const response = await fetch(fontUrl);
-    const blob = await response.blob();
-    const buffer = await blobToBuffer(blob);
-    const font = fontkit.create(buffer);
-    setFont(font as fontkit.Font);
+    let fontData = [];
+    for await (const fontItem of fontUrls) {
+      const url = fontItem.url;
+      const name = fontItem.name;
+
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const buffer = await blobToBuffer(blob);
+      const font = fontkit.create(buffer);
+      // console.info("font loaded", font);
+      fontData.push({ url, name, font });
+    }
+
+    setFonts(fontData);
   } catch (error) {
     console.error("Error loading font", fontUrl, error);
     // TODO: show snackbar, disable loading of initial text, possibly try loading other font
@@ -379,7 +400,7 @@ class FormattedPage {
   public size: DocumentSize;
   public pageNumber: number;
 
-  public fontData: fontkit.Font;
+  public fontData: FontData[];
 
   constructor(
     size: DocumentSize,
@@ -575,7 +596,7 @@ class FormattedPage {
         renderItem.realChar === "#" &&
         nextRenderItem.realChar === " "
       ) {
-        console.info("indent");
+        // console.info("indent");
         contentIndex++;
         this.content.insert(contentIndex - 1, " ");
         i += 1;
@@ -595,13 +616,13 @@ class FormattedPage {
         currentFormat?.italic !== renderItem.format.italic ||
         currentFormat?.underline !== renderItem.format.underline
       ) {
-        console.info(
-          "formatting insert",
-          formatStart,
-          formatEnd,
-          currentFormat,
-          renderItem
-        );
+        // console.info(
+        //   "formatting insert",
+        //   formatStart,
+        //   formatEnd,
+        //   currentFormat,
+        //   renderItem
+        // );
 
         this.formatting.insert(
           new Interval(formatStart, formatEnd - 1),
@@ -720,7 +741,7 @@ class FormattedPage {
       })
     ) as unknown as MappedFormat[];
 
-    console.info("existing formats", existingFormats);
+    // console.info("existing formats", existingFormats);
 
     // Remove existing formatting in the range
     this.formatting.remove(new Interval(formatStart, formatEnd));
@@ -757,7 +778,7 @@ class FormattedPage {
         new Interval(formatStart, formatEnd),
         defaultFormatWithChanges
       );
-      console.info("format inserted");
+      // console.info("format inserted");
     }
 
     // Update layout for the affected range
@@ -775,7 +796,7 @@ class FormattedPage {
         format: value,
       })
     ) as unknown as MappedFormat[];
-    console.info("also getFormattedText", this.pageNumber, start, end, formats);
+    // console.info("also getFormattedText", this.pageNumber, start, end, formats);
     return this.mergeTextAndFormatting(text, formats, start);
   }
 
@@ -1026,6 +1047,7 @@ class FormattedPage {
     const bulletIndent = 40; // Adjust as needed
 
     for (let i = 0; i < text.length; i++) {
+      const prevChar = text[i - 1];
       const char = text[i];
 
       if (char === "\n") {
@@ -1114,7 +1136,7 @@ class FormattedPage {
         cachedHeight = height;
       }
 
-      const capHeight = getCapHeightPx(this.fontData, style.fontSize);
+      const capHeight = getCapHeightPx(this.fontData, style);
 
       if (isNewLine) {
         lineHeight = capHeight;
@@ -1187,6 +1209,15 @@ class FormattedPage {
           page: currentPageNumber,
         });
       } else {
+        // const kerning = getKerning(
+        //   this.fontData,
+        //   prevChar,
+        //   char,
+        //   style.fontSize
+        // );
+
+        // currentX += kerning;
+
         layoutInfo.push({
           char,
           x: currentX ? currentX + letterSpacing : 0,
@@ -1242,41 +1273,152 @@ class FormattedPage {
   }
 }
 
-const getCharacterBoundingBox = (
+function getKerning(
   fontData: fontkit.Font,
+  prevChar: string,
+  char: string,
+  fontSize: number
+): number {
+  if (!prevChar || !char) {
+    return 0;
+  }
+
+  const cacheKey = `${prevChar}_${char}_${fontSize}`;
+
+  if (cacheKey in kerningCache) {
+    return kerningCache[cacheKey];
+  }
+
+  const scaleFactor = fontSize / fontData.unitsPerEm;
+  const glyphRun = fontData.layout(prevChar + char);
+
+  if (!glyphRun.positions[1] || !glyphRun.positions[0]) {
+    return 0;
+  }
+
+  const glyph1 = glyphRun.glyphs[0];
+  const glyph2 = glyphRun.glyphs[1];
+
+  const boundingBox1 = glyph1?.bbox;
+  const boundingBox2 = glyph2?.bbox;
+
+  if (
+    !boundingBox1 ||
+    boundingBox1.width == -Infinity ||
+    boundingBox1.height == -Infinity ||
+    !boundingBox2 ||
+    boundingBox2.width == -Infinity ||
+    boundingBox2.height == -Infinity
+  ) {
+    return 0;
+  }
+
+  // Calculate the space between the right edge of the first glyph and the left edge of the second glyph
+  const spaceWithoutKerning = glyph1.bbox.width + glyph2.bbox.width;
+  const actualSpace = glyphRun.bbox.width;
+
+  // The kerning is the difference between these two values
+  const kerning = (actualSpace - spaceWithoutKerning) * scaleFactor;
+
+  console.info("spaces", actualSpace, spaceWithoutKerning, kerning);
+
+  // const diffWidth = boundingBox1.width - boundingBox0.width;
+
+  // const kerning = (diffWidth / fontData.unitsPerEm) * fontSize,
+
+  // const kerning =
+  //   (glyphRun.positions[1].xAdvance - glyphRun.positions[0].xAdvance) *
+  //   scaleFactor;
+
+  // console.info("kerning", char, kerning);
+
+  kerningCache[cacheKey] = kerning;
+  return kerning;
+}
+
+const getCharacterBoundingBox = (
+  fontDatas: FontData[],
   character: string,
   style: Style
 ) => {
-  const glyph = fontData?.layout(character);
-  const boundingBox = glyph?.bbox;
-  const unitsPerEm = fontData?.unitsPerEm;
-  const { xAdvance, xOffset } = glyph.positions[0];
+  try {
+    // console.info("get box", character);
+    const fontData = fontDatas.find(
+      (data) => data.name === style.fontFamily
+    )?.font;
+    const glyph = fontData?.layout(character);
+    // console.info("see box", fontData, glyph);
 
-  if (
-    !boundingBox ||
-    boundingBox.width == -Infinity ||
-    boundingBox.height == -Infinity ||
-    !unitsPerEm
-  ) {
+    const boundingBox = glyph?.bbox;
+
+    // console.info("More box", fontData?.unitsPerEm, boundingBox);
+
+    const unitsPerEm = fontData?.unitsPerEm;
+    const { xAdvance, xOffset } = glyph.positions[0];
+
+    if (
+      !boundingBox ||
+      boundingBox.width == -Infinity ||
+      boundingBox.height == -Infinity ||
+      !unitsPerEm
+    ) {
+      return {
+        width: 5,
+        height: 5,
+      };
+    }
+
+    // console.info("getCharacterBoundingBox", character, style.fontSize);
+
     return {
-      width: 5,
-      height: 5,
+      width: (boundingBox.width / unitsPerEm) * style.fontSize,
+      height: (boundingBox.height / unitsPerEm) * style.fontSize,
     };
+  } catch (error) {
+    console.error("error", error);
   }
-
-  // console.info("getCharacterBoundingBox", character, style.fontSize);
-
-  return {
-    width: (boundingBox.width / unitsPerEm) * style.fontSize,
-    height: (boundingBox.height / unitsPerEm) * style.fontSize,
-  };
 };
 
-const getCapHeightPx = (fontData: fontkit.Font, fontSize: number) => {
+// const getCharacterBoundingBox = (
+//   fontData: fontkit.Font,
+//   character: string,
+//   style: Style
+// ) => {
+//   try {
+//     const glyph = fontData?.layout(character);
+//     // console.info("glyph", glyph);
+//     const unitsPerEm = fontData?.unitsPerEm;
+//     const { xAdvance } = glyph.positions[0];
+
+//     if (!xAdvance || !unitsPerEm) {
+//       return {
+//         width: 5,
+//         height: style.fontSize,
+//       };
+//     }
+
+//     return {
+//       width: (xAdvance / unitsPerEm) * style.fontSize,
+//       height: style.fontSize,
+//     };
+//   } catch (error) {
+//     console.error("error", error);
+//     return {
+//       width: 5,
+//       height: style.fontSize,
+//     };
+//   }
+// };
+
+const getCapHeightPx = (fontDatas: FontData[], style: Style) => {
+  const fontData = fontDatas.find(
+    (data) => data.name === style.fontFamily
+  )?.font;
+
   return (
     ((fontData.capHeight + fontData.ascent + fontData.descent) /
       fontData.unitsPerEm) *
-    fontSize
+    style.fontSize
   );
 };
 export class MultiPageEditor {
@@ -1285,22 +1427,19 @@ export class MultiPageEditor {
   public size: DocumentSize;
   public visibleLines: number;
   public scrollPosition: number;
-  public fontData: fontkit.Font;
+  public fontData: FontData[];
 
   public rebalanceDebounce: any;
   public rebalanceDebounceStaggered: any;
   public avgPageLength = 3000; // TODO: better algorithm for determining exact overflow is needed
 
-  constructor(
-    size: DocumentSize,
-    visibleLines: number,
-    fontData: fontkit.Font
-  ) {
+  constructor(size: DocumentSize, visibleLines: number, fontData: FontData[]) {
     this.pages = [new FormattedPage(size, fontData)];
     this.size = size; // Height of a page in characters or pixels
     this.visibleLines = visibleLines;
     this.scrollPosition = 0;
     this.fontData = fontData;
+    console.info("fontData", fontData);
   }
 
   // TODO: getRenderChunks creates RenderItems as chunks of text, split by formatting AND newlines

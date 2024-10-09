@@ -4,7 +4,8 @@ import { initializeMultiPageRTE } from "./initializeMultiPageRTE";
 import {
   defaultStyle,
   DocumentSize,
-  loadFont,
+  FontData,
+  loadFonts,
   MultiPageEditor,
   VisualKinds,
 } from "./useMultiPageRTE";
@@ -48,7 +49,7 @@ export const initializeMultiPageRTE = (
   documentSize: DocumentSize,
   marginSize: MarginSize,
   debounceCallback: () => {},
-  fontUrl: string, // for now just Inter
+  fontUrls: FontData[], // for now just Inter
   uploadImageHandler: () => {}
 ) => {
   const setMasterJson = (json, optionalInsertIndex, runCallback = true) => {
@@ -340,6 +341,8 @@ export const initializeMultiPageRTE = (
             break;
           default:
             {
+              e.preventDefault();
+
               // any other character
               const type = "character";
               const character = e.key;
@@ -898,8 +901,8 @@ export const initializeMultiPageRTE = (
     }, {} as { [key: number]: RenderItem[] });
   };
 
-  loadFont((data) => {
-    fontData = data;
+  loadFonts((allFontsData) => {
+    fontData = allFontsData;
     console.info(
       "fontdata loaded, intializing editor",
       initialMarkdown?.length,
@@ -926,7 +929,7 @@ export const initializeMultiPageRTE = (
     multiPageEditor.visuals = initialVisualsJson;
 
     renderVisuals();
-  }, fontUrl);
+  }, fontUrls);
 
   window.addEventListener("keydown", handleKeydown);
   window.addEventListener("scroll", handleScroll);

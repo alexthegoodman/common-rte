@@ -1,6 +1,6 @@
 {
   "name": "common-rte",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "description": "Multi-Page Rich Text Editor for Web",
   "main": "index.js",
   "type": "module",

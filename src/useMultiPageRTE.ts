@@ -139,7 +139,7 @@ export const loadFonts = async (
 
     setFonts(fontData);
   } catch (error) {
-    console.error("Error loading font", fontUrl, error);
+    console.error("Error loading font", fontUrls, error);
     // TODO: show snackbar, disable loading of initial text, possibly try loading other font
   }
 };
@@ -1901,14 +1901,26 @@ export class MultiPageEditor {
     return renderItems;
   }
 
-  getTextLength(beforePage?: number) {
+  getTextLength(beforePage?: number, withNewlines = true) {
     let total = 0;
     for (let i = 0; i < this.pages.length; i++) {
       const page = this.pages[i];
       if (typeof beforePage !== "undefined" && i < beforePage) {
-        total += page.content.length;
+        if (withNewlines) {
+          total += page.content.length ? page.content.length : 0;
+        } else {
+          let content = page.content.substring(0, page.content.length);
+          content = content.split("\n").join("");
+          total += content.length;
+        }
       } else if (typeof beforePage === "undefined") {
-        total += page.content.length;
+        if (withNewlines) {
+          total += page.content.length ? page.content.length : 0;
+        } else {
+          let content = page.content.substring(0, page.content.length);
+          content = content.split("\n").join("");
+          total += content.length;
+        }
       }
     }
     return total;

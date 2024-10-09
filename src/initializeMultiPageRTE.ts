@@ -55,6 +55,8 @@ export const initializeMultiPageRTE = (
   const setMasterJson = (json, optionalInsertIndex, runCallback = true) => {
     clearTimeout(debounceTimer);
 
+    // console.info("set master json");
+
     masterJson =
       optionalInsertIndex && masterJson
         ? [
@@ -67,7 +69,7 @@ export const initializeMultiPageRTE = (
     jsonByPage = getJsonByPage(masterJson);
 
     if (editorInstance) {
-      if (jsonByPage && jsonByPage[0] && !stage) {
+      if (!stage) {
         // console.info(
         //   "render nodes",
         //   Object.keys(jsonByPage).length,
@@ -408,9 +410,23 @@ export const initializeMultiPageRTE = (
 
   // when no text exists, will calculate at first character
   const handleCanvasClick = (e: KonvaEventObject<MouseEvent>) => {
-    console.info("canvas click");
-
     setEditorActive(true);
+
+    const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+
+    window.__canvasRTEInsertCharacterIndex = editorInstance.getTextLength(
+      undefined,
+      false
+    );
+    window.__canvasRTEInsertCharacterIndexNl = editorInstance.getTextLength();
+
+    console.info(
+      "canvas click",
+      window.__canvasRTEInsertCharacterIndex,
+      window.__canvasRTEInsertCharacterIndexNl
+    );
+
+    renderCursor();
   };
 
   const handleShapeClick = (e: KonvaEventObject<MouseEvent>) => {
@@ -573,8 +589,10 @@ export const initializeMultiPageRTE = (
         width: mainTextSize.width,
         height: mainTextSize.height,
         fill: "#fff",
-        onMouseDown: handleCanvasClick,
+        // onMouseDown: handleCanvasClick,
       });
+
+      pageInner.on("mousedown", handleCanvasClick);
 
       lyr.add(pageOuter);
       lyr.add(pageInner);
@@ -602,7 +620,7 @@ export const initializeMultiPageRTE = (
     //   y: documentSize.height * i + marginSize.y,
     // });
 
-    for (let i = 0; i < masterJson.length; i++) {
+    for (let i = 0; i < masterJson?.length; i++) {
       const charText = masterJson[i];
 
       //   const nextCharText = masterJson[i + 1];
@@ -695,7 +713,7 @@ export const initializeMultiPageRTE = (
 
     // masterJson.forEach((charText: RenderItem, i) => {
     let contentIndex = 0;
-    for (let i = 0; i < masterJson.length; i++) {
+    for (let i = 0; i < masterJson?.length; i++) {
       const charText = masterJson[i];
 
       //   const nextCharText = masterJson[i + 1];
@@ -840,8 +858,8 @@ export const initializeMultiPageRTE = (
 
   const renderCursor = () => {
     if (
-      window.__canvasRTEInsertCharacterIndex ||
-      window.__canvasRTEInsertCharacterIndexNl
+      window.__canvasRTEInsertCharacterIndex >= 0 ||
+      window.__canvasRTEInsertCharacterIndexNl >= 0
     ) {
       cursorGroup?.destroy();
 
@@ -853,7 +871,24 @@ export const initializeMultiPageRTE = (
         name: "selectionGroup",
       });
 
-      const charData = masterJson[window.__canvasRTEInsertCharacterIndexNl];
+      let charData = masterJson[window.__canvasRTEInsertCharacterIndexNl];
+
+      if (!charData) {
+        let prevData = masterJson[window.__canvasRTEInsertCharacterIndexNl - 1];
+
+        charData = {
+          x: prevData?.x + prevData?.width,
+          y: prevData?.y,
+        };
+      }
+
+      if (masterJson.length === 0) {
+        charData = {
+          x: 0,
+          y: 0,
+        };
+      }
+
       //   console.info(
       //     "charData",
       //     window.__canvasRTEInsertCharacterIndexNl,
@@ -881,8 +916,8 @@ export const initializeMultiPageRTE = (
       // Start the animation
       anim.start();
     } else if (
-      window.__canvasRTEInsertCharacterIndex === 0 ||
-      window.__canvasRTEInsertCharacterIndexNl === 0
+      window.__canvasRTEInsertCharacterIndex < 0 ||
+      window.__canvasRTEInsertCharacterIndexNl < 0
     ) {
       cursorGroup?.destroy();
     }
@@ -924,6 +959,9 @@ export const initializeMultiPageRTE = (
         setMasterJson,
         true
       );
+    } else {
+      // no markdown or json
+      setMasterJson([], 0, true);
     }
 
     multiPageEditor.visuals = initialVisualsJson;

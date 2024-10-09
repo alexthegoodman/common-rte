@@ -512,7 +512,7 @@ export const initializeMultiPageRTE = (
   };
   const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
     if (isSelectingText && e.evt.buttons) {
-      console.info("selecting text", e);
+      // console.info("selecting text", e);
 
       const target = e.target;
       const characterId = target.id();

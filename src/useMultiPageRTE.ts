@@ -700,7 +700,7 @@ class FormattedPage {
       typeof nlStart !== "undefined" ? nlStart : start,
       typeof nlEnd !== "undefined" ? nlEnd : end
     );
-    this.formatting.remove(new Interval(start, end));
+    this.formatting.remove(new Interval(start, end)); // TODO: needs value param
     this.adjustFormatting(start, -deleteLength);
   }
 
@@ -709,14 +709,14 @@ class FormattedPage {
     // TODO: optimize
     this.formatting.forEach((key: [number, number], value) => {
       if (key[0] >= index) {
-        this.formatting.remove(key);
+        this.formatting.remove(key); // TODO: needs value param
         // this.formatting.insert([key[0] + length, key[1] + length], value);
         this.formatting.insert(
           new Interval(key[0] + length, key[1] + length),
           value
         );
       } else if (key[1] > index) {
-        this.formatting.remove(key);
+        this.formatting.remove(key); // TODO: needs value param
         // this.formatting.insert([key[0], key[1] + length], value);
         this.formatting.insert(new Interval(key[0], key[1] + length), value);
       }
@@ -741,7 +741,7 @@ class FormattedPage {
       })
     ) as unknown as MappedFormat[];
 
-    // console.info("existing formats", existingFormats);
+    console.info("existing formats", existingFormats.length);
 
     // Remove existing formatting in the range
     this.formatting.remove(new Interval(formatStart, formatEnd));
@@ -756,13 +756,13 @@ class FormattedPage {
       if (newStart < newEnd) {
         const updatedFormat = { ...format, ...formatChanges };
         // console.info(
-        //   "apply new formatting",
+        //   "apply new formatting where there are existing formats",
         //   newStart,
         //   newEnd,
         //   format,
         //   updatedFormat
         // );
-        this.formatting.remove(new Interval(newStart, newEnd));
+        this.formatting.remove([newStart, newEnd], format);
         this.formatting.insert(new Interval(newStart, newEnd), updatedFormat);
       }
     }
@@ -773,12 +773,12 @@ class FormattedPage {
       existingFormats[0].interval.low > start ||
       existingFormats[existingFormats.length - 1].interval.high < end
     ) {
+      // console.info("format inserted where no existing formats");
       const defaultFormatWithChanges = { ...defaultStyle, ...formatChanges };
       this.formatting.insert(
         new Interval(formatStart, formatEnd),
         defaultFormatWithChanges
       );
-      // console.info("format inserted");
     }
 
     // Update layout for the affected range

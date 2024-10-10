@@ -10,11 +10,13 @@
         <div id="cmnToolbarPrimary" class="toolbar">
           <label>Alter Text:</label>
           <select id="cmnFontFamily">
-            <option value="Inter">Inter</option>
-            <option value="Playfair">Playfair</option>
-            <option value="Raleway">Raleway</option>
-            <option value="PT Sans">PT Sans</option>
-            <option value="PT Serif">PT Serif</option>
+            <option value="Inter" style="font-family: 'Inter'">Inter</option>
+            <option value="Playfair" style="font-family: 'Playfair'">Playfair</option>
+            <option value="Raleway" style="font-family: 'Raleway'">Raleway</option>
+            <option value="PT Sans" style="font-family: 'PT Sans'">PT Sans</option>
+            <option value="PT Serif" style="font-family: 'PT Serif'">PT Serif</option>
+            <option value="Permanent Marker" style="font-family: 'Permanent Marker'">Permanent Marker</option>
+            <option value="DM Serif Display" style="font-family: 'DM Serif Display'">DM Serif Display</option>
           </select>
           <button id="cmnColor">Color</button>
           <select id="cmnFontSize">
@@ -90,6 +92,18 @@
               font-weight: normal;
               font-style: normal;
             }
+            @font-face {
+              font-family: "Permanent Marker";
+              src: url("./src/assets/fonts/PermanentMarker-Regular.ttf");
+              font-weight: normal;
+              font-style: normal;
+            }
+            @font-face {
+              font-family: "DM Serif Display";
+              src: url("./src/assets/fonts/DMSerifDisplay-Regular.ttf");
+              font-weight: normal;
+              font-style: normal;
+            }
             .toolbar {
               display: flex;
               flex-direction: row;
@@ -127,6 +141,12 @@
           <div className="preloadFont" style="font-family: 'PT Serif'">
             .
           </div>
+          <div className="preloadFont" style="font-family: 'Permanent Marker'">
+            .
+          </div>
+          <div className="preloadFont" style="font-family: 'DM Serif Display'">
+            .
+          </div>
           <script type="module">
             // @ts-nocheck
 
@@ -146,6 +166,8 @@ import fontUrlOswald from "./src/assets/fonts/Oswald[wght].ttf"
 import fontUrlRaleway from "./src/assets/fonts/Raleway[wght].ttf";
 import fontUrlPTSans from "./src/assets/fonts/PT_Sans-Web-Regular.ttf"
 import fontUrlPTSerif from "./src/assets/fonts/PT_Serif-Web-Regular.ttf"
+import fontUrlPermMarker from "./src/assets/fonts/PermanentMarker-Regular.ttf"
+import fontUrlDMSerif from "./src/assets/fonts/DMSerifDisplay-Regular.ttf"
 
 console.info("Welcome to Common RTE");
 
@@ -334,6 +356,14 @@ initializeMultiPageRTE(
     {
       name: "PT Serif",
       url: fontUrlPTSerif
+    },
+    {
+      name: "Permanent Marker",
+      url: fontUrlPermMarker
+    },
+    {
+      name: "DM Serif Display",
+      url: fontUrlDMSerif
     }
   ],
   uploadImage

@@ -989,9 +989,17 @@ export const initializeMultiPageRTE = (
     handleFormattingDown({ underline: true });
   };
 
+  const handleFontFamily = (e) => {
+    handleFormattingDown({ fontFamily: e.target.value });
+  };
+
+  document
+    .getElementById("cmnFontFamily")
+    ?.addEventListener("change", handleFontFamily);
   document
     .getElementById("cmnFontSize")
     ?.addEventListener("change", handleFontSize);
+
   document.getElementById("cmnBold")?.addEventListener("click", handleBold);
   document.getElementById("cmnItalic")?.addEventListener("click", handleItalic);
   document
@@ -1181,6 +1189,9 @@ export const initializeMultiPageRTE = (
     window.removeEventListener("keydown", handleKeydown);
     window.removeEventListener("scroll", handleScroll);
     window.removeEventListener("scrollend", handleScrollEnd);
+    document
+      .getElementById("cmnFontFamily")
+      ?.removeEventListener("change", handleFontFamily);
     document
       .getElementById("cmnFontSize")
       ?.removeEventListener("change", handleFontSize);

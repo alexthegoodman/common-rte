@@ -1,6 +1,5 @@
 // @ts-nocheck
 
-// import RopeSequence from "rope-sequence";
 import { ComponentRope } from "./ComponentRope";
 import IntervalTree, {
   Interval,
@@ -8,11 +7,7 @@ import IntervalTree, {
 } from "@flatten-js/interval-tree";
 import * as fontkit from "fontkit";
 import { v4 as uuidv4 } from "uuid";
-// import { KonvaEventObject } from "konva/lib/Node";
-// import { useEffect, useMemo, useRef, useState } from "react";
 import { Buffer } from "buffer";
-
-// import fontUrl from "../src/assets/fonts/Inter-Regular.ttf";
 
 // @ts-ignore
 window.Buffer = Buffer;
@@ -86,6 +81,10 @@ export interface Visual {
   url: string;
 }
 
+export interface KerningCache {
+  [key: string]: number;
+}
+
 export const defaultVisual: Visual = {
   id: "none",
   kind: VisualKinds.circle,
@@ -97,6 +96,7 @@ export const defaultVisual: Visual = {
 };
 
 const letterSpacing = 1;
+
 export const defaultStyle: Style = {
   color: "black",
   fontSize: 16,
@@ -106,10 +106,6 @@ export const defaultStyle: Style = {
   underline: false,
   isLineBreak: false,
 };
-
-export interface KerningCache {
-  [key: string]: number;
-}
 
 const kerningCache: KerningCache = {};
 
@@ -133,29 +129,25 @@ export const loadFonts = async (
       const blob = await response.blob();
       const buffer = await blobToBuffer(blob);
       const font = fontkit.create(buffer);
-      // console.info("font loaded", font);
+
       fontData.push({ url, name, font });
     }
 
     setFonts(fontData);
   } catch (error) {
     console.error("Error loading font", fontUrls, error);
-    // TODO: show snackbar, disable loading of initial text, possibly try loading other font
+    // TODO: show snackbar / notification
   }
 };
 
 // extend window type
 declare global {
   interface Window {
-    // __canvasRTEEditorActive: boolean;
-    //   __canvasRTEInsertCharacterId: string | null;
     __canvasRTEInsertCharacterIndex: number;
     __canvasRTEInsertCharacterIndexNl: number;
   }
 }
 
-// window.__canvasRTEEditorActive = false;
-//   window.__canvasRTEInsertCharacterId = null;
 window.__canvasRTEInsertCharacterIndex = 0;
 window.__canvasRTEInsertCharacterIndexNl = 0;
 
@@ -177,7 +169,6 @@ class LayoutTree {
 
   queryInfos(index: number) {
     const query = this.root.query(0, this.root.max);
-    // console.info("queryInfos", query);
     return query[0].layoutInfo ? query[0].layoutInfo[index] : null;
   }
 }
@@ -204,8 +195,6 @@ class LayoutNode {
   }
 
   update(start: number, end: number, layoutInfo: RenderItem[]) {
-    // console.info("LayoutNode update: ", start, end, layoutInfo);
-
     this.layoutInfo = layoutInfo;
 
     // If the update range is completely outside this node's range, do nothing
@@ -218,8 +207,6 @@ class LayoutNode {
       return;
     }
 
-    // console.info("working on update...");
-
     // Recurse on children
     if (this.left) {
       this.left.update(start, end, layoutInfo);
@@ -230,7 +217,6 @@ class LayoutNode {
 
     // If this node is a leaf and partially overlaps, split it
     if (!this.left && !this.right) {
-      // console.info("split");
       this.split();
     }
 
@@ -250,25 +236,17 @@ class LayoutNode {
 
     // If this node is a leaf, return its layout info
     if (!this.left && !this.right) {
-      // return [
-      //   { start: this.start, end: this.end, layoutInfo: this.layoutInfo },
-      // ];
-      // console.info("leaf");
       return [new LayoutNode(this.start, this.end, this.layoutInfo)];
     }
 
     // Recurse on children
     let result: LayoutNode[] = [];
     if (this.left) {
-      // console.info("has left");
       result = result.concat(this.left.query(start, end));
     }
     if (this.right) {
-      // console.info("has right");
       result = result.concat(this.right.query(start, end));
     }
-
-    // console.info("LayoutNode query: ", result);
 
     return result;
   }
@@ -279,121 +257,13 @@ class LayoutNode {
     this.right = new LayoutNode(mid, this.end);
 
     if (this.layoutInfo) {
-      // console.info("split set layoutInfo", this.layoutInfo);
       this.left.layoutInfo = this.layoutInfo;
       this.right.layoutInfo = this.layoutInfo;
     }
   }
 }
 
-// class LayoutNode {
-//   public start: number;
-//   public end: number;
-//   public left: LayoutNode | null;
-//   public right: LayoutNode | null;
-//   public layoutInfo: RenderItem[] | null;
-//   public max: number;
-//   public maxSafeInt: number = 3000;
-
-//   constructor(
-//     start: number,
-//     end: number,
-//     layoutInfo: RenderItem[] | null = null
-//   ) {
-//     this.start = start;
-//     this.end = end;
-//     this.left = null;
-//     this.right = null;
-//     this.layoutInfo = layoutInfo;
-//     this.max = end;
-//   }
-
-//   update(start: number, end: number, layoutInfo: RenderItem[]) {
-//     console.log("Updating node", {
-//       currentStart: this.start,
-//       currentEnd: this.end,
-//       updateStart: start,
-//       updateEnd: end,
-//     });
-
-//     if (end <= this.start || start >= this.end) {
-//       console.log("No overlap, returning", {
-//         currentStart: this.start,
-//         currentEnd: this.end,
-//         updateStart: start,
-//         updateEnd: end,
-//       });
-//       return;
-//     }
-
-//     if (start <= this.start && end >= this.end) {
-//       console.log("Full overlap, updating layoutInfo");
-//       this.layoutInfo = layoutInfo;
-//       return;
-//     }
-
-//     if (!this.left && !this.right) {
-//       console.log("Splitting node", {
-//         currentStart: this.start,
-//         currentEnd: this.end,
-//       });
-//       this.split();
-//     }
-
-//     if (this.left) {
-//       console.log("Updating left node", {
-//         leftStart: this.left.start,
-//         leftEnd: this.left.end,
-//       });
-//       this.left.update(start, end, layoutInfo);
-//     }
-//     if (this.right) {
-//       console.log("Updating right node", {
-//         rightStart: this.right.start,
-//         rightEnd: this.right.end,
-//       });
-//       this.right.update(start, end, layoutInfo);
-//     }
-
-//     this.max = Math.max(
-//       this.left ? this.left.max : this.end,
-//       this.right ? this.right.max : this.end
-//     );
-//   }
-
-//   query(start: number, end: number): LayoutNode[] {
-//     if (end <= this.start || start >= this.max) {
-//       return [];
-//     }
-
-//     if (!this.left && !this.right) {
-//       return [new LayoutNode(this.start, this.end, this.layoutInfo)];
-//     }
-
-//     let result: LayoutNode[] = [];
-//     if (this.left) {
-//       result = result.concat(this.left.query(start, end));
-//     }
-//     if (this.right) {
-//       result = result.concat(this.right.query(start, end));
-//     }
-
-//     return result;
-//   }
-
-//   split() {
-//     if (this.end - this.start <= 1) {
-//       return; // Stop splitting if the range is too small
-//     }
-
-//     const mid = Math.floor((this.start + this.end) / 2);
-//     this.left = new LayoutNode(this.start, mid, this.layoutInfo);
-//     this.right = new LayoutNode(mid, this.end, this.layoutInfo);
-//   }
-// }
-
 class FormattedPage {
-  //   public content: RopeSequence<any>;
   public content: ComponentRope;
   public formatting: IntervalTree;
   public layout: LayoutTree;
@@ -404,7 +274,7 @@ class FormattedPage {
 
   constructor(
     size: DocumentSize,
-    fontData: fontkit.Font,
+    fontData: FontData[],
     pageNumber: number = 0
   ) {
     this.content = new ComponentRope("");
@@ -419,57 +289,6 @@ class FormattedPage {
     return this.content.substring(localIndexNl, localIndexNl + 1);
   }
 
-  // getNewlinesBetween(startIndexNl: number, endIndexNl: number) {
-  //   const content = this.content.substring(startIndexNl, endIndexNl);
-  //   console.info("getNewlinesBetween", startIndexNl, endIndexNl, content);
-  //   let count = 0;
-  //   for (let i = 0; i < content.length; i++) {
-  //     const char = content[i];
-  //     if (char === "\n") {
-  //       count++;
-  //     }
-  //   }
-  //   return count;
-  // }
-
-  // insert(index: number, text: string, format: Style) {
-  //   performance.mark("page-insert-started");
-
-  //   const lines = text.split(/\r?\n/);
-  //   let currentIndex = index;
-
-  //   for (let i = 0; i < lines.length; i++) {
-  //     const line = lines[i];
-
-  //     currentIndex = Math.min(currentIndex, this.content.length);
-
-  //     if (line.length > 0) {
-  //       // Insert the line
-  //       this.content.insert(currentIndex, line);
-  //       this.formatting.insert(
-  //         new Interval(currentIndex, currentIndex + line.length),
-  //         format
-  //       );
-  //     }
-
-  //     currentIndex += line.length;
-
-  //     // If this isn't the last line, insert a line break
-  //     if (i < lines.length - 1 || line === "") {
-  //       this.insertLineBreak(currentIndex);
-  //       currentIndex++;
-  //     }
-  //   }
-
-  //   performance.mark("page-insert-ended");
-
-  //   performance.measure(
-  //     "pageInsert",
-  //     "page-insert-started",
-  //     "page-insert-ended"
-  //   );
-  // }
-
   insert(
     index: number,
     nlIndex: number,
@@ -477,11 +296,6 @@ class FormattedPage {
     format: Style,
     callback = () => {}
   ) {
-    // if (text === "\n") {
-    //   console.info("text is newline");
-    // }
-    // console.info("insert ", index, nlIndex, text);
-
     performance.mark("page-insert-started");
 
     const lines = text.split(/\r?\n/);
@@ -491,8 +305,6 @@ class FormattedPage {
 
     let linesFinished = 0; // one newline for each line
 
-    // console.info("text lines", lines);
-
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
@@ -501,24 +313,11 @@ class FormattedPage {
 
       if (text !== "\n") {
         if (line.length > 0) {
-          // Insert the line
           this.content.insert(currentNlIndex, line);
-
-          // Shift existing intervals
-          // this.shiftIntervalsAfter(currentIndex, line.length);
-
-          // Insert new formatting
           this.formatting.insert(
             new Interval(currentIndex, currentIndex + line.length),
             format
           );
-          // console.info(
-          //   "inserted format in insert",
-          //   this.pageNumber,
-          //   currentIndex,
-          //   currentIndex + line.length,
-          //   format
-          // );
 
           totalInsertedLength += line.length;
         }
@@ -530,8 +329,6 @@ class FormattedPage {
       // If this isn't the last line, insert a line break
       if (i < lines.length - 1) {
         this.insertLineBreak(currentIndex, currentNlIndex);
-        // this.shiftIntervalsAfter(currentIndex, 1);
-        // currentIndex++;
         currentNlIndex++;
         totalInsertedLength++;
       }
@@ -540,8 +337,6 @@ class FormattedPage {
     }
 
     // Shift all intervals after the entire insertion
-    // TODO: needs to happen for every page?
-    // this.shiftIntervalsAfter(index, totalInsertedLength);
     callback(index, totalInsertedLength);
 
     performance.mark("page-insert-ended");
@@ -568,23 +363,8 @@ class FormattedPage {
       const nextRenderItem = json[i + 1];
 
       if (prevRenderItem?.char === "\n") {
-        // currentX = 0;
-        // currentY += lineHeight;
         isNewLine = true;
-        // isBulletPoint = false;
-        // isHeadline1 = false;
-        // continue;
       }
-
-      // if (i < 20) {
-      //   console.info(
-      //     "insertJson",
-      //     renderItem,
-      //     isNewLine,
-      //     renderItem.char === "#",
-      //     nextRenderItem.char === " "
-      //   );
-      // }
 
       this.content.insert(contentIndex - 1, renderItem.realChar);
 
@@ -604,7 +384,6 @@ class FormattedPage {
         renderItem.realChar === "#" &&
         nextRenderItem.realChar === " "
       ) {
-        // console.info("indent");
         contentIndex++;
         this.content.insert(contentIndex - 1, " ");
         i += 1;
@@ -624,14 +403,6 @@ class FormattedPage {
         currentFormat?.italic !== renderItem.format.italic ||
         currentFormat?.underline !== renderItem.format.underline
       ) {
-        // console.info(
-        //   "formatting insert",
-        //   formatStart,
-        //   formatEnd,
-        //   currentFormat,
-        //   renderItem
-        // );
-
         this.formatting.insert(
           new Interval(formatStart, formatEnd - 1),
           currentFormat
@@ -645,8 +416,6 @@ class FormattedPage {
       formatEnd++;
       formatDiff++;
       isNewLine = false;
-
-      // this.layout.update(i, i + 1, [renderItem]); // should be unnecessary as rebalance updates layouts
     }
   }
 
@@ -664,7 +433,6 @@ class FormattedPage {
     this.formatting.clear();
 
     // Shift and reinsert intervals
-    // allIntervals.forEach(([start, end, format]) => {
     for (const { interval, format } of allIntervals) {
       let start = interval.low;
       let end = interval.high;
@@ -683,18 +451,13 @@ class FormattedPage {
         this.formatting.insert(new Interval(start, end), format);
       }
     }
-    // });
   }
 
   insertLineBreak(index: number, nlIndex: number) {
-    // console.info("insertLineBreak", index, nlIndex);
     // Insert a special character or object to represent a line break
     index = Math.min(index, this.content.length);
     nlIndex = Math.min(nlIndex, this.content.length);
-    // console.info("inserting line break");
     this.content.insert(nlIndex, "\n");
-    // this.content.insert(index + 1, "\n");
-    // this.updateFormatting(index, 1, { isLineBreak: true });
     this.formatting.insert(new Interval(index, index + 1), {
       ...defaultStyle,
       isLineBreak: true,
@@ -714,32 +477,28 @@ class FormattedPage {
       typeof nlStart !== "undefined" ? nlStart : start,
       typeof nlEnd !== "undefined" ? nlEnd : end
     );
-    this.formatting.remove(new Interval(start, end)); // TODO: needs value param
+    this.formatting.remove(new Interval(start, end));
     this.adjustFormatting(start, -deleteLength);
     callback();
   }
 
   adjustFormatting(index: number, length: number) {
-    // this.formatting.forEach([index, Infinity], (interval: Interval) => {
     // TODO: optimize
     this.formatting.forEach((key: [number, number], value) => {
       if (key[0] >= index) {
-        this.formatting.remove(key); // TODO: needs value param
-        // this.formatting.insert([key[0] + length, key[1] + length], value);
+        this.formatting.remove(key);
         this.formatting.insert(
           new Interval(key[0] + length, key[1] + length),
           value
         );
       } else if (key[1] > index) {
-        this.formatting.remove(key); // TODO: needs value param
-        // this.formatting.insert([key[0], key[1] + length], value);
+        this.formatting.remove(key);
         this.formatting.insert(new Interval(key[0], key[1] + length), value);
       }
     });
   }
 
   alterFormatting(start: number, end: number, formatChanges: Partial<Style>) {
-    // console.info("alterFormatting", start, end);
     // Ensure start and end are within bounds
     start = Math.max(0, Math.min(start, this.content.length));
     end = Math.max(start, Math.min(end, this.content.length));
@@ -756,8 +515,6 @@ class FormattedPage {
       })
     ) as unknown as MappedFormat[];
 
-    console.info("existing formats", existingFormats.length);
-
     // Remove existing formatting in the range
     this.formatting.remove(new Interval(formatStart, formatEnd));
 
@@ -766,17 +523,9 @@ class FormattedPage {
       const newStart = Math.max(interval.low, formatStart);
       const newEnd = Math.min(interval.high, formatEnd);
 
-      // console.info("check", formatStart, formatEnd, newStart, newEnd);
-
       if (newStart < newEnd) {
         const updatedFormat = { ...format, ...formatChanges };
-        // console.info(
-        //   "apply new formatting where there are existing formats",
-        //   newStart,
-        //   newEnd,
-        //   format,
-        //   updatedFormat
-        // );
+
         this.formatting.remove([newStart, newEnd], format);
         this.formatting.insert(new Interval(newStart, newEnd), updatedFormat);
       }
@@ -788,7 +537,6 @@ class FormattedPage {
       existingFormats[0].interval.low > start ||
       existingFormats[existingFormats.length - 1].interval.high < end
     ) {
-      // console.info("format inserted where no existing formats");
       const defaultFormatWithChanges = { ...defaultStyle, ...formatChanges };
       this.formatting.insert(
         new Interval(formatStart, formatEnd),
@@ -797,13 +545,11 @@ class FormattedPage {
     }
 
     // Update layout for the affected range
-    // this.updateLayout(formatStart, formatEnd);
     this.updateLayout(0, this.content.length);
   }
 
   getFormattedText(start: number, end: number) {
     const text = this.content.substring(start, end);
-    // console.info("check text", text.includes("\n"));
     const formats = this.formatting.search(
       new Interval(start, end),
       (value, key) => ({
@@ -811,7 +557,6 @@ class FormattedPage {
         format: value,
       })
     ) as unknown as MappedFormat[];
-    // console.info("also getFormattedText", this.pageNumber, start, end, formats);
     return this.mergeTextAndFormatting(text, formats, start);
   }
 
@@ -823,18 +568,11 @@ class FormattedPage {
     let result: FormattedText[] = [];
     let currentIndex = 0;
 
-    // formats.sort((a, b) => a[0] - b[0]);
     formats.sort((a, b) => a.interval.low - a.interval.low);
 
-    // console.info("formats", formats);
-
     for (let { interval, format } of formats) {
-      // let start = interval[0];
-      // let end = interval[1];
       let start = interval.low;
       let end = interval.high;
-
-      // if format interval is 0 and 0, it will continue to pull from 0...
 
       start = Math.max(start - offset, 0);
       end = Math.min(end - offset, text.length);
@@ -868,7 +606,6 @@ class FormattedPage {
         format: value,
       })
     ) as unknown as MappedFormat[];
-    // console.info("updateLayout: ", text, formats, start);
     const layoutInfo = this.calculateLayout(
       text,
       formats,
@@ -877,169 +614,9 @@ class FormattedPage {
       insertLength,
       insertIndex
     );
-    // console.info("updateLayout: ", start, end);
+
     this.layout.update(start, end, layoutInfo);
   }
-
-  // calculateLayout(
-  //   text: string,
-  //   formats: MappedFormat[],
-  //   offset: number,
-  //   pageNumber: number,
-  //   insertLength: number,
-  //   insertIndex: number
-  // ): RenderItem[] {
-  //   let layoutInfo = [];
-  //   let currentX = 0;
-  //   let currentY = 0;
-  //   let lineHeight = 0;
-
-  //   let currentPageNumber = this.pageNumber;
-  //   const pageHeight = this.size.height; // Assuming you have a pageHeight property
-
-  //   console.info("calculateLayout", pageNumber);
-
-  //   let contentIndex = 0;
-  //   for (let i = 0; i < text.length; i++) {
-  //     const char = text[i];
-
-  //     // if (char === "\n" || format?.isLineBreak) { // TODO: verify that format.isLineBreak is indeed at same index as this char, otherwise may be misplaced
-  //     if (char === "\n") {
-  //       // Move to the next line
-  //       currentX = 0;
-  //       currentY += lineHeight;
-  //       // lineHeight = 0;
-  //       continue;
-  //     }
-
-  //     contentIndex++;
-
-  //     // const format = this.getFormatAtIndex(i + offset, formats);
-  //     const format = this.getFormatAtIndex(contentIndex - 1, formats);
-
-  //     let layoutIndex =
-  //       contentIndex > insertIndex ? contentIndex - insertLength : contentIndex; // minus because from old layout
-
-  //     let prevLayoutInfo = this.layout.queryInfos(layoutIndex - 1);
-  //     let prevLayoutInfoCheck = this.layout.queryInfos(contentIndex - 1);
-
-  //     // console.info("layout at index", prevLayoutInfo);
-
-  //     if (!format?.fontSize) {
-  //       console.warn("no format on char?");
-  //     }
-
-  //     // const fontData = this.getFontData(format.fontFamily);
-  //     const style = {
-  //       ...defaultStyle,
-  //       fontSize: format?.fontSize ? format.fontSize : defaultStyle.fontSize,
-  //       fontWeight: format?.fontWeight
-  //         ? format.fontWeight
-  //         : defaultStyle.fontWeight,
-  //     };
-
-  //     let cachedWidth = 0;
-  //     let cachedHeight = 0;
-
-  //     if (prevLayoutInfoCheck && prevLayoutInfoCheck.char === char) {
-  //       prevLayoutInfo = prevLayoutInfoCheck;
-  //     }
-
-  //     // if (prevLayoutInfo && prevLayoutInfo.char !== char) {
-  //     //   console.info(
-  //     //     "no match on layout ",
-  //     //     currentPageNumber,
-  //     //     layoutIndex,
-  //     //     contentIndex,
-  //     //     insertLength,
-  //     //     insertIndex,
-  //     //     char,
-  //     //     prevLayoutInfo,
-  //     //     prevLayoutInfoCheck
-  //     //   );
-  //     // }
-
-  //     // yes, this caching helps when the chars match, but frequently they don't when a new char is inserted
-  //     // in theory, by providing length of text inserted and insertion index, we can be more likely to grab the cached value
-  //     if (prevLayoutInfo && prevLayoutInfo.char === char) {
-  //       // console.info("prevLayoutInfo", char, prevLayoutInfo);
-
-  //       if (
-  //         prevLayoutInfo?.format.color !== style.color ||
-  //         prevLayoutInfo?.format.fontFamily !== style.fontFamily ||
-  //         prevLayoutInfo?.format.fontSize !== style.fontSize ||
-  //         prevLayoutInfo?.format.fontWeight !== style.fontWeight ||
-  //         prevLayoutInfo?.format.isLineBreak !== style.isLineBreak ||
-  //         prevLayoutInfo?.format.italic !== style.italic ||
-  //         prevLayoutInfo?.format.underline !== style.underline
-  //       ) {
-  //         // console.info(
-  //         //   "difference detected, get new width and height",
-  //         //   prevLayoutInfo,
-  //         //   cachedWidth,
-  //         //   cachedHeight
-  //         // );
-
-  //         const { width, height } = getCharacterBoundingBox(
-  //           this.fontData,
-  //           char,
-  //           style
-  //         );
-
-  //         cachedWidth = width;
-  //         cachedHeight = height;
-  //       } else {
-  //         // no difference detected, uses cached dimensions
-  //         cachedWidth = prevLayoutInfo?.width;
-  //         cachedHeight = prevLayoutInfo?.height;
-  //       }
-  //     } else {
-  //       const { width, height } = getCharacterBoundingBox(
-  //         this.fontData,
-  //         char,
-  //         style
-  //       );
-
-  //       cachedWidth = width;
-  //       cachedHeight = height;
-  //     }
-
-  //     const capHeight = getCapHeightPx(this.fontData, style.fontSize);
-
-  //     // Check if we need to wrap to the next line
-  //     if (currentX + cachedWidth > this.size.width) {
-  //       currentX = 0;
-  //       currentY += lineHeight;
-  //       lineHeight = 0;
-  //     }
-
-  //     // // Check again for new page after line break
-  //     // console.info("check page ", currentY + capHeight, pageHeight);
-  //     if (currentY + capHeight > pageHeight) {
-  //       currentPageNumber++;
-  //       currentY = 0;
-  //       // console.warn("new page", currentPageNumber);
-  //     }
-
-  //     layoutInfo.push({
-  //       char,
-  //       x: currentX ? currentX + letterSpacing : 0,
-  //       y: currentY,
-  //       width: cachedWidth,
-  //       height: cachedHeight,
-  //       capHeight,
-  //       format,
-  //       page: currentPageNumber,
-  //     });
-
-  //     currentX += cachedWidth + letterSpacing;
-  //     lineHeight = Math.max(lineHeight, capHeight);
-  //   }
-
-  //   // console.info("layoutinfo", layoutInfo);
-
-  //   return layoutInfo;
-  // }
 
   calculateLayout(
     text: string,
@@ -1059,7 +636,7 @@ class FormattedPage {
     let isNewLine = true;
     let isBulletPoint = false;
     let isHeadline1 = false;
-    const bulletIndent = 40; // Adjust as needed
+    const bulletIndent = 40;
 
     for (let i = 0; i < text.length; i++) {
       const prevChar = text[i - 1];
@@ -1078,13 +655,13 @@ class FormattedPage {
         isBulletPoint = true;
         i++; // Skip the space after the dash
         currentX = bulletIndent; // Indent the text after the bullet
-        contentIndex++; // ?
+        contentIndex++;
       }
 
       if (isNewLine && char === "#" && text[i + 1] === " ") {
         isHeadline1 = true;
         i++; // Skip the space after the pound
-        contentIndex++; // ?
+        contentIndex++;
       }
 
       contentIndex++;
@@ -1107,10 +684,8 @@ class FormattedPage {
         underline: format?.underline ?? defaultStyle.underline,
       };
 
-      // TODO: users should be able to change a headlines size when not knowing markdown was imported (having to remove the # )
       if (isHeadline1) {
         style.fontSize = 36;
-        // lineHeight = 26;
       }
 
       let cachedWidth = 0;
@@ -1158,10 +733,6 @@ class FormattedPage {
       } else {
         lineHeight = Math.max(lineHeight, capHeight);
       }
-
-      // if (cachedHeight > 20) {
-      //   console.info("bigger", char, cachedHeight, lineHeight);
-      // }
 
       if (currentX + cachedWidth > this.size.width) {
         currentX = isBulletPoint ? bulletIndent : 0;
@@ -1224,15 +795,6 @@ class FormattedPage {
           page: currentPageNumber,
         });
       } else {
-        // const kerning = getKerning(
-        //   this.fontData,
-        //   prevChar,
-        //   char,
-        //   style.fontSize
-        // );
-
-        // currentX += kerning;
-
         layoutInfo.push({
           char,
           x: currentX ? currentX + letterSpacing : 0,
@@ -1265,8 +827,6 @@ class FormattedPage {
     for (const obj of formats) {
       const { low, high } = obj.interval;
 
-      // console.info("checking", low, high, index);
-
       // Check if the index is within the current interval
       if (index >= low && index <= high) {
         const currentRange = high - low;
@@ -1279,12 +839,7 @@ class FormattedPage {
       }
     }
 
-    // if (!result?.format) {
-    //   console.info("!result", result);
-    // }
-
     return result?.format ? result?.format : defaultStyle;
-    // return defaultStyle;
   }
 }
 
@@ -1393,37 +948,6 @@ const getCharacterBoundingBox = (
     console.error("error", error);
   }
 };
-
-// const getCharacterBoundingBox = (
-//   fontData: fontkit.Font,
-//   character: string,
-//   style: Style
-// ) => {
-//   try {
-//     const glyph = fontData?.layout(character);
-//     // console.info("glyph", glyph);
-//     const unitsPerEm = fontData?.unitsPerEm;
-//     const { xAdvance } = glyph.positions[0];
-
-//     if (!xAdvance || !unitsPerEm) {
-//       return {
-//         width: 5,
-//         height: style.fontSize,
-//       };
-//     }
-
-//     return {
-//       width: (xAdvance / unitsPerEm) * style.fontSize,
-//       height: style.fontSize,
-//     };
-//   } catch (error) {
-//     console.error("error", error);
-//     return {
-//       width: 5,
-//       height: style.fontSize,
-//     };
-//   }
-// };
 
 const getCapHeightPx = (fontDatas: FontData[], style: Style) => {
   const fontData = fontDatas.find(
@@ -1551,18 +1075,6 @@ export class MultiPageEditor {
     let endPageIndex = this.getPageIndexForGlobalIndex(globalEnd, false);
     let endLocalIndex = this.getLocalIndex(globalEnd, endPageIndex, false);
     let adjustedEndLocal = this.getLocalIndex(globalEndNl, endPageIndex, false);
-
-    // console.info(
-    //   "check indexes",
-    //   globalStart,
-    //   globalStartNl,
-    //   startPageIndex,
-    //   startLocalIndex,
-    //   adjustedStartLocal,
-    //   endPageIndex,
-    //   endLocalIndex,
-    //   adjustedEndLocal
-    // );
 
     const callback = (index) => {
       const diff = startLocalIndex - endLocalIndex;
@@ -1965,87 +1477,6 @@ export class MultiPageEditor {
     return total;
   }
 
-  // rebalancePages(
-  //   startPageIndex: number,
-  //   initialize = false,
-  //   insertLength: number,
-  //   insertIndex: number
-  // ) {
-  //   performance.mark("rebalance-started");
-
-  //   const pageHeight = this.size.height;
-
-  //   let totalPages = this.pages.length;
-  //   if (initialize) {
-  //     totalPages = Math.max(
-  //       1,
-  //       Math.ceil(this.pages[0].content.length / this.avgPageLength)
-  //     );
-  //   }
-
-  //   for (let i = startPageIndex; i < totalPages; i++) {
-  //     const currentPage = this.pages[i];
-
-  //     if (typeof currentPage === "undefined") {
-  //       break;
-  //     }
-
-  //     const nextPage =
-  //       this.pages[i + 1] || new FormattedPage(this.size, this.fontData);
-
-  //     currentPage.pageNumber = i;
-  //     nextPage.pageNumber = i + 1;
-
-  //     // Calculate layout for the current page
-  //     const layoutInfo = currentPage.calculateLayout(
-  //       currentPage.content.substring(0, currentPage.content.length),
-  //       currentPage.formatting.search(
-  //         [0, currentPage.content.length],
-  //         (value, key) => ({
-  //           interval: key,
-  //           format: value,
-  //         })
-  //       ) as unknown as MappedFormat[],
-  //       0,
-  //       i,
-  //       insertLength,
-  //       insertIndex
-  //     );
-  //     const nextPageStartIndex = layoutInfo?.findIndex(
-  //       (info) => info?.page > i
-  //     );
-
-  //     if (nextPageStartIndex !== -1) {
-  //       const overflowText = currentPage.content.substring(nextPageStartIndex);
-  //       const overflowFormatting = currentPage.formatting.search(
-  //         [nextPageStartIndex, Infinity],
-  //         (value, key) => ({
-  //           interval: key,
-  //           format: value,
-  //         })
-  //       ) as unknown as MappedFormat[];
-
-  //       currentPage.delete(nextPageStartIndex, currentPage.content.length);
-  //       nextPage.insert(0, 0, overflowText, overflowFormatting[0].format);
-  //     }
-
-  //     if (nextPage.content.length > 0 && !this.pages[i + 1]) {
-  //       this.pages.push(nextPage);
-  //     }
-  //   }
-
-  //   // update layouts in staggered manner
-  //   this.pages[startPageIndex].updateLayout(
-  //     0,
-  //     this.pages[startPageIndex].content.length,
-  //     insertLength,
-  //     insertIndex
-  //   );
-
-  //   performance.mark("rebalance-ended");
-  //   performance.measure("rebalance", "rebalance-started", "rebalance-ended");
-  // }
-
   rebalancePages(
     startPageIndex: number,
     initialize = false,
@@ -2188,10 +1619,6 @@ export class MultiPageEditor {
   updatePageLayouts(startPageIndex: number) {
     console.info("updatePageLayouts");
     for (let i = startPageIndex + 1; i < this.pages.length; i++) {
-      // this.pages[i].updateLayout(
-      //   this.pages[i].content.length - this.avgPageLength,
-      //   this.pages[i].content.length
-      // );
       this.pages[i].updateLayout(0, this.pages[i].content.length);
     }
   }
@@ -2250,7 +1677,6 @@ export class MultiPageEditor {
             this.pages[i].content.length
           );
           content = content.split("\n").join("");
-          console.info("content includes", content.includes("\n"));
           accumIndex += content.length;
         }
       }

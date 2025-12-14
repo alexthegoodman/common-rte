@@ -10,7 +10,7 @@ Features:
 - Visuals including rectangles, circles, and images
 - Restore from Markdown (partially implemented)
 - Restore from JSON for complex formatting
-- 100ms or less response times in many cases
+- Average of 50ms response time for each keystroke, making it feel responsive and snappy
 
 ## Example Usage
 

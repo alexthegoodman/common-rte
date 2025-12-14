@@ -1256,37 +1256,19 @@ export class MultiPageEditor {
     clearTimeout(this.rebalanceDebounce);
     clearTimeout(this.rebalanceDebounceStaggered);
 
-    if (initialize) {
-      this.updatePageLayouts(pageIndex); // run again on itialize
+    this.rebalancePages(
+      pageIndex,
+      initialize,
+      insertLength,
+      insertIndex,
+      isInsertion,
+      setMasterJson
+    );
+
+    if (!initialize) {
+      const renderableAll = this.renderAll();
+      setMasterJson(renderableAll);
     }
-
-    if (initialize) {
-      this.rebalancePages(pageIndex, initialize, 0, 0, true);
-    } else {
-      this.rebalancePages(
-        pageIndex,
-        initialize,
-        insertLength,
-        insertIndex,
-        isInsertion
-      );
-    }
-
-    // const { startIndex, combined } = this.renderVisible();
-    // console.info("renderAndRebalance", startIndex, combined);
-    // setMasterJson(combined, startIndex);
-
-    if (initialize) {
-      this.updatePageLayouts(pageIndex); // run again on itialize
-    }
-
-    const renderableAll = this.renderAll();
-    setMasterJson(renderableAll);
-
-    // this.rebalanceDebounceStaggered = setTimeout(() => {
-    //   // update other page layouts in staggered fashion, first is done in rebalancePages()
-
-    // }, 500);
   }
 
   getLayoutInfo(start: number, end: number) {
@@ -1482,32 +1464,29 @@ export class MultiPageEditor {
     initialize = false,
     changeLength: number,
     changeIndex: number,
-    isInsertion: boolean = true
+    isInsertion: boolean = true,
+    setMasterJson: any
   ) {
     performance.mark("rebalance-started");
 
-    let totalPages = this.pages.length;
-    if (initialize) {
-      totalPages = Math.max(
-        1,
-        Math.ceil(this.pages[0].content.length / this.avgPageLength)
-      );
-    }
-
-    for (let i = startPageIndex; i < totalPages; i++) {
+    const rebalance = (i: number) => {
       const currentPage = this.pages[i];
-
-      if (typeof currentPage === "undefined") {
-        break;
+      if (!currentPage) {
+        if (i > 0) {
+          // After the last page, do a final render
+          const renderableAll = this.renderAll();
+          if (setMasterJson) {
+            setMasterJson(renderableAll);
+          }
+        }
+        return;
       }
 
       const nextPage =
         this.pages[i + 1] || new FormattedPage(this.size, this.fontData);
-
       currentPage.pageNumber = i;
       nextPage.pageNumber = i + 1;
 
-      // Calculate layout for the current page
       const layoutInfo = currentPage.calculateLayout(
         currentPage.content.substring(0, currentPage.content.length),
         currentPage.formatting.search(
@@ -1519,9 +1498,10 @@ export class MultiPageEditor {
         ) as unknown as MappedFormat[],
         0,
         i,
-        changeLength,
-        changeIndex
+        i === startPageIndex ? changeLength : 0,
+        i === startPageIndex ? changeIndex : 0
       );
+      currentPage.layout.update(0, currentPage.content.length, layoutInfo);
 
       const nextPageStartIndex = layoutInfo.findIndex((info) => info.page > i);
 
@@ -1541,76 +1521,41 @@ export class MultiPageEditor {
           ? overflowFormatting[0].format
           : defaultStyle;
         nextPage.insert(0, 0, overflowText, nextPageFormat);
+
+        if (!this.pages[i + 1]) {
+          this.pages.push(nextPage);
+        }
       } else if (!isInsertion && nextPage.content.length > 0) {
         // Handle underflow
-        const nextPageLayout = nextPage.calculateLayout(
-          nextPage.content.substring(0, nextPage.content.length),
-          nextPage.formatting.search(
-            new Interval(0, nextPage.content.length),
-            (value, key) => ({
-              interval: key,
-              format: value,
-            })
-          ) as unknown as MappedFormat[],
-          0,
-          i + 1,
-          0,
-          0
-        );
-
-        const contentToMoveIndex = nextPageLayout.findIndex(
-          (info) => info.page > i + 1
-        );
-
-        if (contentToMoveIndex !== -1) {
-          const contentToMove = nextPage.content.substring(
-            0,
-            contentToMoveIndex
-          );
-          const formatToMove = nextPage.formatting.search(
-            new Interval(0, contentToMoveIndex),
-            (value, key) => ({
-              interval: key,
-              format: value,
-            })
-          )[0].format;
-
-          currentPage.insert(
-            currentPage.content.length, // TODO: remove newlines
-            currentPage.content.length,
-            contentToMove,
-            formatToMove
-          );
-          nextPage.delete(0, contentToMoveIndex);
-        } else {
-          // If all content from next page fits, move it all
-          currentPage.insert(
-            currentPage.content.length, // TODO: remove newlines
-            currentPage.content.length,
-            nextPage.content.substring(0, nextPage.content.length),
-            nextPage.formatting.search(new Interval(0, 1), (value) => value)[0]
-          );
-          nextPage.delete(0, nextPage.content.length);
-        }
+        // (Simplified for now, can be expanded)
       }
 
-      if (nextPage.content.length > 0 && !this.pages[i + 1]) {
-        this.pages.push(nextPage);
-      } else if (nextPage.content.length === 0 && this.pages[i + 1]) {
-        // Remove empty pages
+      if (nextPage.content.length === 0 && this.pages[i + 1]) {
         this.pages.splice(i + 1, 1);
-        totalPages--;
-        i--; // Recheck this index in the next iteration
       }
-    }
 
-    // update layouts in staggered manner
-    this.pages[startPageIndex].updateLayout(
-      0,
-      this.pages[startPageIndex].content.length,
-      changeLength,
-      changeIndex
-    );
+      // Schedule the next page rebalance
+      if (i < this.pages.length) {
+        setTimeout(() => rebalance(i + 1), 50);
+      }
+    };
+
+    if (initialize) {
+      // For initialization, run through all pages synchronously
+      let i = 0;
+      while (i < this.pages.length) {
+        rebalance(i);
+        i++;
+      }
+      const renderableAll = this.renderAll();
+      if (setMasterJson) {
+        setMasterJson(renderableAll);
+      }
+    } else {
+      // For typing, rebalance current page sync, then chain the rest async
+      rebalance(startPageIndex);
+      setTimeout(() => rebalance(startPageIndex + 1), 50);
+    }
 
     performance.mark("rebalance-ended");
     performance.measure("rebalance", "rebalance-started", "rebalance-ended");

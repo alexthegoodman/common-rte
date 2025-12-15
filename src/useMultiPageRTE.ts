@@ -1469,7 +1469,7 @@ export class MultiPageEditor {
   ) {
     performance.mark("rebalance-started");
 
-    const rebalance = (i: number) => {
+    const rebalance = (i: numberm, asyncScheduling: boolean) => {
       const currentPage = this.pages[i];
       if (!currentPage) {
         if (i > 0) {
@@ -1535,8 +1535,8 @@ export class MultiPageEditor {
       }
 
       // Schedule the next page rebalance
-      if (i < this.pages.length) {
-        setTimeout(() => rebalance(i + 1), 50);
+      if (asyncScheduling && i < this.pages.length) {
+        setTimeout(() => rebalance(i + 1, asyncScheduling), 50);
       }
     };
 
@@ -1544,7 +1544,7 @@ export class MultiPageEditor {
       // For initialization, run through all pages synchronously
       let i = 0;
       while (i < this.pages.length) {
-        rebalance(i);
+        rebalance(i, false);
         i++;
       }
       const renderableAll = this.renderAll();
@@ -1553,8 +1553,7 @@ export class MultiPageEditor {
       }
     } else {
       // For typing, rebalance current page sync, then chain the rest async
-      rebalance(startPageIndex);
-      setTimeout(() => rebalance(startPageIndex + 1), 50);
+      rebalance(startPageIndex, true);
     }
 
     performance.mark("rebalance-ended");

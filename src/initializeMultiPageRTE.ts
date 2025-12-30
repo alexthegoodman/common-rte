@@ -7,6 +7,7 @@ import {
   MultiPageEditor,
   RenderItem,
   SpanItem,
+  Style,
   VisualKinds,
 } from "./useMultiPageRTE";
 import Konva from "konva";
@@ -16,8 +17,8 @@ import Picker from "vanilla-picker";
 let fontData = null;
 let masterJson: SpanItem[][] | null = null;
 let isSelectingText = false;
-let firstSelectedNode = null;
-let lastSelectedNode = null;
+let firstSelectedNode: string | null = null;
+let lastSelectedNode: string | null = null;
 let editorInstance: MultiPageEditor | null = null;
 let editorActive = false;
 let jsonByPage: SpanItem[][] | null = null;
@@ -535,59 +536,18 @@ export const initializeMultiPageRTE = (
   };
 
   const insertCursor = (e: KonvaEventObject<MouseEvent>) => {
+    if (!masterJson) return;
+    if (!firstSelectedNode) return;
+
     const target = e.target;
     const spanId = target.id();
     const pageIndex = parseInt(spanId.split("-")[0]);
     const spanIndex = parseInt(spanId.split("-")[1]);
-    
+    const charIndexInSpan = parseInt(firstSelectedNode.split("-")[3]);
+
     // Get the span's RenderItem
     const page = masterJson[pageIndex];
     const span = page[spanIndex];
-    
-    // Get click position relative to the span
-    // const clickX = e.evt.offsetX - target.x();
-    // const clickX = e.evt.offsetX - target.x() - marginSize.x;
-    
-    // Find which character in the span was clicked using charPositions
-    let charIndexInSpan = 0;
-    let accumulatedWidth = 0;
-    
-    // for (let i = 0; i < span.charPositions.length; i++) {
-    //   const charWidth = span.charPositions[i].width;
-      
-    //   // Check if click is within this character's bounds
-    //   if (clickX < accumulatedWidth + charWidth / 2) {
-    //     charIndexInSpan = i;
-    //     break;
-    //   }
-      
-    //   accumulatedWidth += charWidth;
-    //   charIndexInSpan = i + 1; // If past all chars, cursor goes at end
-    // }
-
-    // const clickX = e.evt.offsetX - target.x();
-    // const clickY = e.evt.offsetY - target.y();
-    const clickX = e.evt.offsetX - marginSize.x;
-    const clickY = e.evt.offsetY - marginSize.y;
-    let capHeight = span.height || 0;
-
-    // Find character by both X and Y
-    for (let i = 0; i < span.charPositions.length; i++) {
-      const char = span.charPositions[i];
-      
-      // Check if click is on the same line (Y coordinate)
-      // if (Math.abs(clickY - char.y) < char.height) {
-      if (clickY < char.y + capHeight && clickY > char.y) {
-        // console.info("in y")
-        // Then check X position
-        // if (clickX < char.x + char.width) {
-        if (clickX < char.x + char.width && clickX > char.x) {
-          // console.info("in x", char, i, span.text?.substring(i - 2, i + 2));
-          charIndexInSpan = i;
-          // break;
-        }
-      }
-    }
 
     if (!charIndexInSpan) {
       console.warn("No character discovered for cursor");
@@ -611,15 +571,70 @@ export const initializeMultiPageRTE = (
     renderCursor();
   };
 
+  const getCharIndex = (masterJson: SpanItem[][], e: KonvaEventObject<MouseEvent>) => {
+    const target = e.target;
+    const spanId = target.id();
+
+    const pageIndex = parseInt(spanId.split("-")[0]);
+    const spanIndex = parseInt(spanId.split("-")[1]);
+
+    // Get the span's RenderItem
+    const page = masterJson[pageIndex];
+    const span = page[spanIndex];
+
+    // TODO: this loop may not be optimal
+    // consider attaching only the span-relative index in the selectionNode string
+    let totalLength = 0;
+    for (let index = 0; index < masterJson.length; index++) {
+      const page = masterJson[index];
+      if (index > pageIndex) break;
+
+      for (let x = 0; x < page.length; x++) {
+        const span = page[x];
+        if (x > spanIndex) break;
+
+        totalLength += span.text.length;
+      }
+    }
+
+    // Find which character in the span was clicked using charPositions
+    let charIndexInSpan = 0;
+    let accumulatedWidth = 0;
+    
+    const clickX = e.evt.offsetX - marginSize.x;
+    const clickY = e.evt.offsetY - marginSize.y;
+    let capHeight = span.height || 0;
+
+    // Find character by both X and Y
+    for (let i = 0; i < span.charPositions.length; i++) {
+      const char = span.charPositions[i];
+      
+      if (clickY < char.y + capHeight && clickY > char.y) {
+        if (clickX < char.x + char.width && clickX > char.x) {
+          charIndexInSpan = i;
+          break;
+        }
+      }
+    }
+
+    return [charIndexInSpan, totalLength + charIndexInSpan]
+  }
+
   const handleTextMouseDown = (e: KonvaEventObject<MouseEvent>) => {
+    if (!masterJson) return;
+
     console.info("text down", e);
     setIsSelectingText(true);
 
     const target = e.target;
     const spanId = target.id();
 
-    setFirstSelectedNode(spanId);
-    setLastSelectedNode(spanId);
+    const [indexInSpan, fullIndex] = getCharIndex(masterJson, e);
+
+    const selectionNode = spanId + "-" + fullIndex + "-" + indexInSpan;
+
+    setFirstSelectedNode(selectionNode);
+    setLastSelectedNode(selectionNode);
     
     insertCursor(e);
   };
@@ -647,55 +662,30 @@ export const initializeMultiPageRTE = (
   // };
 
   const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
+    if (!masterJson) return;
+
     if (isSelectingText && e.evt.buttons) {
       const target = e.target;
       const spanId = target.id();
-      const spanIndex = parseInt(spanId.split("-")[2]);
-      
-      // Get the span and calculate character position within it
-      const span = masterJson[spanIndex];
-      const clickX = e.evt.offsetX - target.x();
-      
-      // Find which character in the span is being hovered
-      let charIndexInSpan = 0;
-      let accumulatedWidth = 0;
-      
-      for (let i = 0; i < span.charPositions.length; i++) {
-        const charWidth = span.charPositions[i].width;
-        
-        if (clickX < accumulatedWidth + charWidth / 2) {
-          charIndexInSpan = i;
-          break;
-        }
-        
-        accumulatedWidth += charWidth;
-        charIndexInSpan = i + 1;
-      }
-      
-      // Calculate global character index for current position
-      let currentGlobalIndex = 0;
-      for (let i = 0; i < spanIndex; i++) {
-        currentGlobalIndex += masterJson[i].text.length;
-      }
-      currentGlobalIndex += charIndexInSpan;
-      
-      // Get global index of first selected position
-      const firstSpanIndex = parseInt(firstSelectedNode.split("-")[2]);
-      let firstGlobalIndex = 0;
-      for (let i = 0; i < firstSpanIndex; i++) {
-        firstGlobalIndex += masterJson[i].text.length;
-      }
+
+      const [indexInSpan, fullIndex] = getCharIndex(masterJson, e);
+
+      const selectionNode = spanId + "-" + fullIndex + "-" + indexInSpan;
+
+      const firstGlobalIndex = firstSelectedNode ? parseInt(firstSelectedNode.split("-")[2]) : 0;
+
+      console.info("txt move", firstGlobalIndex, fullIndex)
       
       // Determine selection direction
-      if (firstGlobalIndex >= currentGlobalIndex) {
-        setFirstSelectedNode(spanId);
+      if (firstGlobalIndex >= fullIndex) {
+        setFirstSelectedNode(selectionNode);
         setSelectionDirection("backward");
       } else {
-        setLastSelectedNode(spanId);
+        setLastSelectedNode(selectionNode);
         setSelectionDirection("forward");
       }
 
-      renderSelectionHighlight(stage, layer, jsonByPage);
+      renderSelectionHighlight(stage, layer, masterJson);
     }
   };
 
@@ -728,6 +718,8 @@ export const initializeMultiPageRTE = (
     // jsonByPage: { [key: number]: RenderItem[] }
     jsonByPage: SpanItem[][]
   ) => {
+    if (!editorInstance || !jsonByPage) return;
+
     lyr.destroyChildren();
 
     const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
@@ -837,43 +829,40 @@ export const initializeMultiPageRTE = (
     group.moveUp();
   };
 
-  const renderSelectionHighlight = (stg, lyr, jsonByPage) => {
-    // lyr.destroyChildren();
+  const renderSelectionHighlight = (stg, lyr, jsonByPage: SpanItem[][]) => {
+    if (!jsonByPage) return;
+    if (!editorInstance) return;
+    if (!firstSelectedNode) return;
+    if (!lastSelectedNode) return;
+
     highlightGroup?.destroy();
 
-    const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
-    const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
-    const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
+    // const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+    const pageIndex = parseInt(firstSelectedNode.split("-")[0]);
+    const spanIndex = parseInt(firstSelectedNode.split("-")[1]);
+    // const firstIndex = parseInt(firstSelectedNode.split("-")[2]);
+    // const lastIndex = parseInt(lastSelectedNode.split("-")[2]);
+    const firstIndex = parseInt(firstSelectedNode.split("-")[3]);
+    const lastIndex = parseInt(lastSelectedNode.split("-")[3]);
 
-    let i = roughPage,
-      key = roughPage;
-    const masterJson = jsonByPage[key];
+    // let i = roughPage,
+    //   key = roughPage;
+    // const page = jsonByPage[key];
 
     highlightGroup = new Konva.Group({
       x: marginSize.x,
-      y: (documentSize.height + shadowSize) * i + marginSize.y,
+      y: (documentSize.height + shadowSize) * pageIndex + marginSize.y,
       name: "selectionGroup",
     });
 
-    // masterJson.forEach((charText: RenderItem, i) => {
+    const page = jsonByPage[pageIndex];
+    const span = page[spanIndex];
+
     let contentIndex = 0;
-    for (let i = 0; i < masterJson?.length; i++) {
-      const charText = masterJson[i];
+    for (let i = 0; i < span.charPositions?.length; i++) {
+      const char = span.charPositions[i];
 
-      //   const nextCharText = masterJson[i + 1];
-      //   if (charText?.realChar === "•" && nextCharText?.realChar === " ") {
-      //     contentIndex--;
-      //     contentIndex--;
-      //   }
-      //   if (charText?.realChar === "#" && nextCharText?.realChar === " ") {
-      //     contentIndex--;
-      //     contentIndex--;
-      //   }
-      //   if (charText?.char === "") {
-      //     contentIndex--;
-      //   }
-
-      if (charText?.char === "\n") continue;
+      if (span?.text === "\n") continue;
 
       contentIndex++;
 
@@ -882,21 +871,18 @@ export const initializeMultiPageRTE = (
 
       let newRect = new Konva.Rect({
         id: "highlight" + i,
-        x: charText?.x,
-        y: charText?.y,
-        width: charText?.width + 2,
+        x: char?.x,
+        y: char?.y,
+        width: char?.width + 2,
         height: 26,
         fill: "lightgrey",
       });
 
       highlightGroup?.add(newRect);
     }
-    // });
 
     lyr?.add(highlightGroup);
     highlightGroup.moveDown();
-    // lyr?.moveDown();
-    // lyr.zIndex(1);
   };
 
   const clearSelectionHightlight = (stg, lyr) => {

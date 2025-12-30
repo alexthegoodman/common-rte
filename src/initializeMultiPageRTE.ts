@@ -1,33 +1,34 @@
-// @ts-nocheck
-
-import { initializeMultiPageRTE } from "./initializeMultiPageRTE";
 import {
   defaultStyle,
   DocumentSize,
   FontData,
   loadFonts,
+  MarginSize,
   MultiPageEditor,
+  RenderItem,
+  SpanItem,
   VisualKinds,
 } from "./useMultiPageRTE";
 import Konva from "konva";
+import { KonvaEventObject } from "konva/lib/Node";
 import Picker from "vanilla-picker";
 
 let fontData = null;
-let masterJson = null;
+let masterJson: SpanItem[][] | null = null;
 let isSelectingText = false;
 let firstSelectedNode = null;
 let lastSelectedNode = null;
-let editorInstance: MultiPageEditor = null;
+let editorInstance: MultiPageEditor | null = null;
 let editorActive = false;
-let jsonByPage = null;
+let jsonByPage: SpanItem[][] | null = null;
 
-let stage = null;
-let layer = null;
+let stage: Konva.Stage | null = null;
+let layer: Konva.Layer | null = null;
 // let highlightLayer = null;
-let visualsLayer = null;
-let cursorLayer = null;
+let visualsLayer: Konva.Layer | null = null;
+let cursorLayer: Konva.Layer | null = null;
 let highlightGroup = null;
-let visualsTransformer = null;
+let visualsTransformer: Konva.Transformer | null = null;
 let cursorGroup = null;
 
 let isSelected = false;
@@ -52,21 +53,28 @@ export const initializeMultiPageRTE = (
   fontUrls: FontData[], // for now just Inter
   uploadImageHandler: () => {}
 ) => {
-  const setMasterJson = (json, optionalInsertIndex, runCallback = true) => {
+  const setMasterJson = (
+    // json: RenderItem[], 
+    jsonByPage: SpanItem[][],
+    optionalInsertIndex, 
+    runCallback = true
+  ) => {
     clearTimeout(debounceTimer);
 
-    // console.info("set master json");
+    console.info("set master json", jsonByPage);
 
-    masterJson =
-      optionalInsertIndex && masterJson
-        ? [
-            ...masterJson.slice(0, optionalInsertIndex), // Keep the elements before the replacement
-            ...json, // Insert the new elements
-            ...masterJson.slice(optionalInsertIndex + json.length), // Keep the elements after the replaced portion
-          ]
-        : json;
-    // console.info("check json", masterJson, editorInstance);
-    jsonByPage = getJsonByPage(masterJson);
+    masterJson = jsonByPage;
+
+    // masterJson =
+    //   optionalInsertIndex && masterJson
+    //     ? [
+    //         ...masterJson.slice(0, optionalInsertIndex), // Keep the elements before the replacement
+    //         ...json, // Insert the new elements
+    //         ...masterJson.slice(optionalInsertIndex + json.length), // Keep the elements after the replaced portion
+    //       ]
+    //     : json;
+    // // console.info("check json", masterJson, editorInstance);
+    // jsonByPage = getJsonByPage(masterJson);
 
     if (editorInstance) {
       if (!stage) {
@@ -111,8 +119,8 @@ export const initializeMultiPageRTE = (
       // TODO: will need to actually save out formatting data as well
       // probably restore / save the masterJson, with option to restore from plaintext
       // TODO: may want to pop up Are you sure? alert if user closes tab before debounce has ran
-      editorInstance.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
-      const content = editorInstance.getAllContent();
+      editorInstance?.updatePageLayouts(0); // may be best called before setMasterJson entirely, before the json is prepared, but this functions
+      const content = editorInstance?.getAllContent();
       debounceCallback(content, masterJson, editorInstance.visuals);
       const lastSavedLabel = document.querySelector("#cmnLastSaved");
       lastSavedLabel?.setHTMLUnsafe(new Date().toString());
@@ -463,6 +471,54 @@ export const initializeMultiPageRTE = (
   };
 
   // set the insert index to this character
+  // const handleTextClick = (e: KonvaEventObject<MouseEvent>) => {
+  //   console.info("text click");
+
+  //   setFirstSelectedNode(null);
+  //   setLastSelectedNode(null);
+
+  //   insertCursor(e);
+
+  //   clearSelectionHightlight(stage, layer);
+
+  //   showPrimaryToolbar();
+  //   selectedShape = null;
+  //   renderVisuals();
+  // };
+
+  // const insertCursor = (e: KonvaEventObject<MouseEvent>) => {
+  //   console.info("text click");
+
+  //   const target = e.target;
+  //   const characterId = target.id();
+  //   const characterIndex = parseInt(characterId.split("-")[2]);
+  //   const characterNlIndex = parseInt(characterId.split("-")[3]);
+
+  //   console.info("characterId", characterId, characterIndex);
+
+  //   const character = masterJson[characterIndex];
+
+  //   window.__canvasRTEInsertCharacterIndex = characterIndex;
+  //   window.__canvasRTEInsertCharacterIndexNl = characterNlIndex;
+
+  //   setEditorActive(true);
+
+  //   renderCursor();
+  // };
+
+  // const handleTextMouseDown = (e: KonvaEventObject<MouseEvent>) => {
+  //   console.info("text down", e);
+  //   setIsSelectingText(true);
+
+  //   const target = e.target;
+  //   const characterId = target.id();
+
+  //   setFirstSelectedNode(characterId);
+  //   setLastSelectedNode(characterId);
+  //   // setEditorActive(true);
+  //   insertCursor(e); // for now this reuse has no side effects, convenient
+  // };
+
   const handleTextClick = (e: KonvaEventObject<MouseEvent>) => {
     console.info("text click");
 
@@ -479,22 +535,79 @@ export const initializeMultiPageRTE = (
   };
 
   const insertCursor = (e: KonvaEventObject<MouseEvent>) => {
-    console.info("text click");
-
     const target = e.target;
-    const characterId = target.id();
-    const characterIndex = parseInt(characterId.split("-")[2]);
-    const characterNlIndex = parseInt(characterId.split("-")[3]);
+    const spanId = target.id();
+    const pageIndex = parseInt(spanId.split("-")[0]);
+    const spanIndex = parseInt(spanId.split("-")[1]);
+    
+    // Get the span's RenderItem
+    const page = masterJson[pageIndex];
+    const span = page[spanIndex];
+    
+    // Get click position relative to the span
+    // const clickX = e.evt.offsetX - target.x();
+    // const clickX = e.evt.offsetX - target.x() - marginSize.x;
+    
+    // Find which character in the span was clicked using charPositions
+    let charIndexInSpan = 0;
+    let accumulatedWidth = 0;
+    
+    // for (let i = 0; i < span.charPositions.length; i++) {
+    //   const charWidth = span.charPositions[i].width;
+      
+    //   // Check if click is within this character's bounds
+    //   if (clickX < accumulatedWidth + charWidth / 2) {
+    //     charIndexInSpan = i;
+    //     break;
+    //   }
+      
+    //   accumulatedWidth += charWidth;
+    //   charIndexInSpan = i + 1; // If past all chars, cursor goes at end
+    // }
 
-    console.info("characterId", characterId, characterIndex);
+    // const clickX = e.evt.offsetX - target.x();
+    // const clickY = e.evt.offsetY - target.y();
+    const clickX = e.evt.offsetX - marginSize.x;
+    const clickY = e.evt.offsetY - marginSize.y;
+    let capHeight = span.height || 0;
 
-    const character = masterJson[characterIndex];
+    // Find character by both X and Y
+    for (let i = 0; i < span.charPositions.length; i++) {
+      const char = span.charPositions[i];
+      
+      // Check if click is on the same line (Y coordinate)
+      // if (Math.abs(clickY - char.y) < char.height) {
+      if (clickY < char.y + capHeight && clickY > char.y) {
+        // console.info("in y")
+        // Then check X position
+        // if (clickX < char.x + char.width) {
+        if (clickX < char.x + char.width && clickX > char.x) {
+          // console.info("in x", char, i, span.text?.substring(i - 2, i + 2));
+          charIndexInSpan = i;
+          // break;
+        }
+      }
+    }
 
-    window.__canvasRTEInsertCharacterIndex = characterIndex;
-    window.__canvasRTEInsertCharacterIndexNl = characterNlIndex;
-
+    if (!charIndexInSpan) {
+      console.warn("No character discovered for cursor");
+    }
+    
+    // Calculate global character index
+    // Need to sum up all previous spans' lengths
+    let globalCharIndex = 0;
+    for (let i = 0; i < spanIndex; i++) {
+      globalCharIndex += page[i].text.length;
+    }
+    globalCharIndex += charIndexInSpan;
+    
+    // console.info("cursor at global index:", "charIndexInSpan", charIndexInSpan);
+    
+    window.__canvasRTEInsertCharacterIndex = globalCharIndex;
+    // window.__canvasRTEInsertCharacterIndexNl = ???; // Need to recalculate this
+    window.__canvasRTEInsertCharacterIndexNl = globalCharIndex;
+    
     setEditorActive(true);
-
     renderCursor();
   };
 
@@ -503,34 +616,89 @@ export const initializeMultiPageRTE = (
     setIsSelectingText(true);
 
     const target = e.target;
-    const characterId = target.id();
+    const spanId = target.id();
 
-    setFirstSelectedNode(characterId);
-    setLastSelectedNode(characterId);
-    // setEditorActive(true);
-    insertCursor(e); // for now this reuse has no side effects, convenient
+    setFirstSelectedNode(spanId);
+    setLastSelectedNode(spanId);
+    
+    insertCursor(e);
   };
+
+  // const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
+  //   if (isSelectingText && e.evt.buttons) {
+  //     // console.info("selecting text", e);
+
+  //     const target = e.target;
+  //     const characterId = target.id();
+
+  //     const characterNlIndex = parseInt(characterId.split("-")[3]);
+  //     const firstIndex = parseInt(firstSelectedNode.split("-")[3]);
+
+  //     if (firstIndex >= characterNlIndex) {
+  //       setFirstSelectedNode(characterId);
+  //       setSelectionDirection("backward");
+  //     } else {
+  //       setLastSelectedNode(characterId);
+  //       setSelectionDirection("forward");
+  //     }
+
+  //     renderSelectionHighlight(stage, layer, jsonByPage);
+  //   }
+  // };
+
   const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
     if (isSelectingText && e.evt.buttons) {
-      // console.info("selecting text", e);
-
       const target = e.target;
-      const characterId = target.id();
-
-      const characterNlIndex = parseInt(characterId.split("-")[3]);
-      const firstIndex = parseInt(firstSelectedNode.split("-")[3]);
-
-      if (firstIndex >= characterNlIndex) {
-        setFirstSelectedNode(characterId);
+      const spanId = target.id();
+      const spanIndex = parseInt(spanId.split("-")[2]);
+      
+      // Get the span and calculate character position within it
+      const span = masterJson[spanIndex];
+      const clickX = e.evt.offsetX - target.x();
+      
+      // Find which character in the span is being hovered
+      let charIndexInSpan = 0;
+      let accumulatedWidth = 0;
+      
+      for (let i = 0; i < span.charPositions.length; i++) {
+        const charWidth = span.charPositions[i].width;
+        
+        if (clickX < accumulatedWidth + charWidth / 2) {
+          charIndexInSpan = i;
+          break;
+        }
+        
+        accumulatedWidth += charWidth;
+        charIndexInSpan = i + 1;
+      }
+      
+      // Calculate global character index for current position
+      let currentGlobalIndex = 0;
+      for (let i = 0; i < spanIndex; i++) {
+        currentGlobalIndex += masterJson[i].text.length;
+      }
+      currentGlobalIndex += charIndexInSpan;
+      
+      // Get global index of first selected position
+      const firstSpanIndex = parseInt(firstSelectedNode.split("-")[2]);
+      let firstGlobalIndex = 0;
+      for (let i = 0; i < firstSpanIndex; i++) {
+        firstGlobalIndex += masterJson[i].text.length;
+      }
+      
+      // Determine selection direction
+      if (firstGlobalIndex >= currentGlobalIndex) {
+        setFirstSelectedNode(spanId);
         setSelectionDirection("backward");
       } else {
-        setLastSelectedNode(characterId);
+        setLastSelectedNode(spanId);
         setSelectionDirection("forward");
       }
 
       renderSelectionHighlight(stage, layer, jsonByPage);
     }
   };
+
   const handleTextMouseUp = (e: KonvaEventObject<MouseEvent>) => {
     console.info("text up", e);
     setIsSelectingText(false);
@@ -554,15 +722,15 @@ export const initializeMultiPageRTE = (
     );
   };
 
-  const renderTextNodes = (stg, lyr, jsonByPage) => {
+  const renderTextNodes = (
+    stg, 
+    lyr, 
+    // jsonByPage: { [key: number]: RenderItem[] }
+    jsonByPage: SpanItem[][]
+  ) => {
     lyr.destroyChildren();
 
-    // make jsonByPage return only the page, or detect current page here and filter by it?
-
     const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
-    // console.info("roughPage render nodes", roughPage);
-
-    // console.info("render nodes", jsonByPage);
 
     let globalIndex = 0;
     let globalNlIndex = 0;
@@ -598,15 +766,12 @@ export const initializeMultiPageRTE = (
       lyr.add(pageInner);
     }
 
-    // Object.keys(jsonByPage).forEach((key, i) => {
     let i = roughPage,
       key = roughPage;
     // add up all lengths in array of arrays before index
     let totalLengthBeforeIndex = Object.values(jsonByPage)
       .slice(0, roughPage) // Get all arrays before the index
       .reduce((sum, arr) => sum + arr.length, 0); // Sum up their lengths
-
-    // console.info("totalLengthBeforeIndex", totalLengthBeforeIndex);
 
     const masterJson = jsonByPage[key];
 
@@ -615,39 +780,25 @@ export const initializeMultiPageRTE = (
       y: (documentSize.height + shadowSize) * i + marginSize.y,
     });
 
-    // var group2 = new Konva.Group({
-    //   x: marginSize.x,
-    //   y: documentSize.height * i + marginSize.y,
-    // });
-
     for (let i = 0; i < masterJson?.length; i++) {
       const charText = masterJson[i];
 
-      //   const nextCharText = masterJson[i + 1];
-      //   if (charText?.realChar === "•" && nextCharText?.realChar === " ") {
-      //     globalIndex--;
-      //     globalIndex--;
-      //     // globalNlIndex--;
-      //   }
-      //   if (charText?.realChar === "#" && nextCharText?.realChar === " ") {
-      //     globalIndex--;
-      //     globalIndex--;
-      //     // globalNlIndex--;
-      //   }
-      //   if (charText?.char === "") {
-      //     globalIndex--;
-      //   }
-
       globalNlIndex++;
 
-      if (charText?.char === "\n") {
+      if (charText?.text === "\n") {
         continue;
       }
 
-      const charId = `${charText.char}-${charText.page}-${
-        totalLengthBeforeIndex + globalIndex
-      }-${totalLengthBeforeIndex + globalNlIndex - 1}`; // will want a totalLengthBeforeIndexWithoutNewlines as well
-      // const isSelected = selectedTextNodes.includes(charId);
+      let text = charText?.text?.split("\n").join(""); // we already account for this
+
+      // const charId = `${charText.text}-${charText.page}-${
+      //   totalLengthBeforeIndex + globalIndex
+      // }-${totalLengthBeforeIndex + globalNlIndex - 1}`; // will want a totalLengthBeforeIndexWithoutNewlines as well
+
+      const charId = `${charText.page}-${i}`;
+
+      // console.info("span id", charId)
+
       if (firstSelectedNode === charId && lastSelectedNode) {
         isSelected = true;
       }
@@ -660,7 +811,7 @@ export const initializeMultiPageRTE = (
         id: charId,
         x: charText?.x,
         y: charText?.y,
-        text: charText.char,
+        text: text,
         fontSize: charText.format.fontSize,
         fontFamily: charText.format.fontFamily,
         fontStyle: charText.format.italic
@@ -668,10 +819,8 @@ export const initializeMultiPageRTE = (
           : charText.format.fontWeight,
         fill: charText.format.color,
         textDecoration: charText.format.underline ? "underline" : "",
-        // onClick: handleTextClick,
-        // onMouseDown: handleTextMouseDown,
-        // onMouseMove: handleTextMouseMove,
-        // onMouseUp: handleTextMouseUp,
+        width: charText.width,
+        wrap: "char"
       });
 
       newText.on("click", handleTextClick);
@@ -685,12 +834,7 @@ export const initializeMultiPageRTE = (
     }
 
     lyr?.add(group);
-    // lyr.add(group2);
     group.moveUp();
-    // lyr.moveUp();
-    // lyr.zIndex(2);
-    // stg?.add(lyr);
-    // });
   };
 
   const renderSelectionHighlight = (stg, lyr, jsonByPage) => {
@@ -856,14 +1000,79 @@ export const initializeMultiPageRTE = (
     visualsLayer.batchDraw();
   };
 
+  // const renderCursor = () => {
+  //   if (
+  //     window.__canvasRTEInsertCharacterIndex >= 0 ||
+  //     window.__canvasRTEInsertCharacterIndexNl >= 0
+  //   ) {
+  //     cursorGroup?.destroy();
+
+  //     const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+
+  //     cursorGroup = new Konva.Group({
+  //       x: marginSize.x,
+  //       y: (documentSize.height + shadowSize) * roughPage + marginSize.y,
+  //       name: "selectionGroup",
+  //     });
+
+  //     let charData = masterJson[window.__canvasRTEInsertCharacterIndexNl];
+
+  //     if (!charData) {
+  //       let prevData = masterJson[window.__canvasRTEInsertCharacterIndexNl - 1];
+
+  //       charData = {
+  //         x: prevData?.x + prevData?.width,
+  //         y: prevData?.y,
+  //       };
+  //     }
+
+  //     if (masterJson.length === 0) {
+  //       charData = {
+  //         x: 0,
+  //         y: 0,
+  //       };
+  //     }
+
+  //     //   console.info(
+  //     //     "charData",
+  //     //     window.__canvasRTEInsertCharacterIndexNl,
+  //     //     charData
+  //     //   );
+  //     const cursor = new Konva.Rect({
+  //       width: 2,
+  //       height: 16,
+  //       x: charData.x - 1,
+  //       y: charData.y,
+  //       fill: "black",
+  //     });
+
+  //     cursorGroup.add(cursor);
+  //     cursorLayer.add(cursorGroup);
+
+  //     // Create the blinking animation
+  //     const anim = new Konva.Animation(function (frame) {
+  //       const period = 1000; // 1 second
+  //       const time = (frame.time % period) / period;
+
+  //       cursor.opacity(Math.abs(Math.sin(time * Math.PI)));
+  //     }, cursorLayer);
+
+  //     // Start the animation
+  //     anim.start();
+  //   } else if (
+  //     window.__canvasRTEInsertCharacterIndex < 0 ||
+  //     window.__canvasRTEInsertCharacterIndexNl < 0
+  //   ) {
+  //     cursorGroup?.destroy();
+  //   }
+  // };
+
   const renderCursor = () => {
-    if (
-      window.__canvasRTEInsertCharacterIndex >= 0 ||
-      window.__canvasRTEInsertCharacterIndexNl >= 0
-    ) {
+    if (window.__canvasRTEInsertCharacterIndex >= 0) {
       cursorGroup?.destroy();
 
       const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+      const activePage = masterJson[roughPage];
 
       cursorGroup = new Konva.Group({
         x: marginSize.x,
@@ -871,32 +1080,65 @@ export const initializeMultiPageRTE = (
         name: "selectionGroup",
       });
 
-      let charData = masterJson[window.__canvasRTEInsertCharacterIndexNl];
+      // Find which span contains the cursor position
+      let globalCharIndex = window.__canvasRTEInsertCharacterIndex;
+      let spanIndex = 0;
+      let charIndexInSpan = 0;
+      let accumulatedLength = 0;
 
-      if (!charData) {
-        let prevData = masterJson[window.__canvasRTEInsertCharacterIndexNl - 1];
+      for (let i = 0; i < activePage.length; i++) {
+        const span = activePage[i];
+        const spanLength = span.text.length;
+        
+        if (globalCharIndex <= accumulatedLength + spanLength) {
+          spanIndex = i;
+          charIndexInSpan = globalCharIndex - accumulatedLength;
+          break;
+        }
+        
+        accumulatedLength += spanLength;
+      }
 
+      const span = activePage[spanIndex];
+      let charData;
+
+      if (!span) {
+        // Empty document or cursor at very end
+        const lastSpan = activePage[activePage.length - 1];
+        if (lastSpan) {
+          const lastCharPos = lastSpan.charPositions[lastSpan.charPositions.length - 1];
+          charData = {
+            x: lastCharPos.x + lastCharPos.width,
+            y: lastSpan.y,
+          };
+        } else {
+          charData = { x: 0, y: 0 };
+        }
+      } else if (charIndexInSpan === 0) {
+        // Cursor at start of span
         charData = {
-          x: prevData?.x + prevData?.width,
-          y: prevData?.y,
+          x: span.x,
+          y: span.y,
+        };
+      } else if (charIndexInSpan >= span.charPositions.length) {
+        // Cursor at end of span
+        const lastCharPos = span.charPositions[span.charPositions.length - 1];
+        charData = {
+          x: lastCharPos.x + lastCharPos.width,
+          y: span.y,
+        };
+      } else {
+        // Cursor in middle of span
+        const charPos = span.charPositions[charIndexInSpan];
+        charData = {
+          x: charPos.x,
+          y: span.y,
         };
       }
 
-      if (masterJson.length === 0) {
-        charData = {
-          x: 0,
-          y: 0,
-        };
-      }
-
-      //   console.info(
-      //     "charData",
-      //     window.__canvasRTEInsertCharacterIndexNl,
-      //     charData
-      //   );
       const cursor = new Konva.Rect({
         width: 2,
-        height: 16,
+        height: span?.format?.fontSize || 16,
         x: charData.x - 1,
         y: charData.y,
         fill: "black",
@@ -907,23 +1149,18 @@ export const initializeMultiPageRTE = (
 
       // Create the blinking animation
       const anim = new Konva.Animation(function (frame) {
-        const period = 1000; // 1 second
+        const period = 1000;
         const time = (frame.time % period) / period;
-
         cursor.opacity(Math.abs(Math.sin(time * Math.PI)));
       }, cursorLayer);
 
-      // Start the animation
       anim.start();
-    } else if (
-      window.__canvasRTEInsertCharacterIndex < 0 ||
-      window.__canvasRTEInsertCharacterIndexNl < 0
-    ) {
+    } else if (window.__canvasRTEInsertCharacterIndex < 0) {
       cursorGroup?.destroy();
     }
   };
 
-  const getJsonByPage = (masterJson) => {
+  const getJsonByPage = (masterJson: RenderItem[]): { [key: number]: RenderItem[] } => {
     return masterJson?.reduce((acc, char) => {
       // if (!char.page) return acc;
       if (!acc[char.page]) {
@@ -959,6 +1196,18 @@ export const initializeMultiPageRTE = (
         setMasterJson,
         true
       );
+      if (editorInstance) {
+        // const { startIndex, combined } = editorInstance.renderVisible();
+        // setMasterJson(combined);
+        const roughPage = Math.floor((editorInstance.scrollPosition * 3) / 3000);
+        console.info("roughPage", roughPage);
+        editorInstance.renderAndRebalance(
+          roughPage,
+          (json, optionalInsertIndex) =>
+            setMasterJson(json, optionalInsertIndex, false),
+          false
+        );
+      }
     } else {
       // no markdown or json
       setMasterJson([], 0, true);

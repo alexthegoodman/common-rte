@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { ComponentRope } from "./ComponentRope";
 import IntervalTree, {
   Interval,
@@ -32,15 +30,32 @@ export interface FontData {
 }
 
 export interface RenderItem {
-  realChar: string;
-  char: string;
+  // Individual Characters (should be separate)
+  realChar?: string;
+  char?: string;
+  width?: number;
+  capHeight?: number;
+
+  // Text spans
+  text?: string;
   x: number;
   y: number;
-  width: number;
   height: number;
-  capHeight: number;
   format: Style;
   page: number;
+  charPositions?: { x: number, y: number, height: number, width: number }[]
+}
+
+export interface SpanItem {
+  // Text spans
+  text: string;
+  realText: string;
+  x: number;
+  y: number;
+  height: number;
+  format: Style;
+  page: number;
+  charPositions: { x: number, y: number, height: number, width: number }[]
 }
 
 export type Style = {
@@ -93,6 +108,8 @@ export const defaultVisual: Visual = {
   width: 100,
   height: 100,
   page: 0,
+  fill: "",
+  url: ""
 };
 
 const letterSpacing = 1;
@@ -107,20 +124,31 @@ export const defaultStyle: Style = {
   isLineBreak: false,
 };
 
+const defaultSpan: SpanItem = {
+  text: "",
+  realText: "",
+  x: 0,
+  y: 0,
+  format: defaultStyle,
+  height: 0,
+  page: 0,
+  charPositions: []
+};
+
 const kerningCache: KerningCache = {};
 
 const blobToBuffer = async (blob: Blob) => {
   const arrayBuffer = await blob.arrayBuffer();
-  const buffer = window.Buffer.from(arrayBuffer);
+  const buffer = (window as any).Buffer.from(arrayBuffer);
   return buffer;
 };
 
 export const loadFonts = async (
   setFonts: (font: fontkit.Font) => void,
-  fontUrls: string[]
+  fontUrls: (string | any)[]
 ) => {
   try {
-    let fontData = [];
+    let fontData: any = [];
     for await (const fontItem of fontUrls) {
       const url = fontItem.url;
       const name = fontItem.name;
@@ -269,6 +297,7 @@ class FormattedPage {
   public layout: LayoutTree;
   public size: DocumentSize;
   public pageNumber: number;
+  public spanNodes: SpanItem[] = [];
 
   public fontData: FontData[];
 
@@ -294,7 +323,7 @@ class FormattedPage {
     nlIndex: number,
     text: string,
     format: Style,
-    callback = () => {}
+    callback = (i, totalLength) => {}
   ) {
     performance.mark("page-insert-started");
 
@@ -347,77 +376,77 @@ class FormattedPage {
     );
   }
 
-  insertJson(json: RenderItem[]) {
-    let currentFormat = null;
-    let formatStart = 0;
-    let formatEnd = 0;
-    let formatDiff = 0;
-    let isNewLine = true;
-    let contentIndex = 0;
-    for (let i = 0; i < json.length; i++) {
-      contentIndex++;
+  // insertJson(json: RenderItem[]) {
+  //   let currentFormat: Style | null = null;
+  //   let formatStart = 0;
+  //   let formatEnd = 0;
+  //   let formatDiff = 0;
+  //   let isNewLine = true;
+  //   let contentIndex = 0;
+  //   for (let i = 0; i < json.length; i++) {
+  //     contentIndex++;
 
-      const renderItem = json[i];
+  //     const renderItem = json[i];
 
-      const prevRenderItem = json[i - 1];
-      const nextRenderItem = json[i + 1];
+  //     const prevRenderItem = json[i - 1];
+  //     const nextRenderItem = json[i + 1];
 
-      if (prevRenderItem?.char === "\n") {
-        isNewLine = true;
-      }
+  //     if (prevRenderItem?.char === "\n") {
+  //       isNewLine = true;
+  //     }
 
-      this.content.insert(contentIndex - 1, renderItem.realChar);
+  //     this.content.insert(contentIndex - 1, renderItem.realChar);
 
-      if (
-        isNewLine &&
-        renderItem.realChar === "-" &&
-        nextRenderItem.realChar === " "
-      ) {
-        contentIndex++;
-        this.content.insert(contentIndex - 1, " ");
-        i += 1;
-        continue;
-      }
+  //     if (
+  //       isNewLine &&
+  //       renderItem.realChar === "-" &&
+  //       nextRenderItem.realChar === " "
+  //     ) {
+  //       contentIndex++;
+  //       this.content.insert(contentIndex - 1, " ");
+  //       i += 1;
+  //       continue;
+  //     }
 
-      if (
-        isNewLine &&
-        renderItem.realChar === "#" &&
-        nextRenderItem.realChar === " "
-      ) {
-        contentIndex++;
-        this.content.insert(contentIndex - 1, " ");
-        i += 1;
-        continue;
-      }
+  //     if (
+  //       isNewLine &&
+  //       renderItem.realChar === "#" &&
+  //       nextRenderItem.realChar === " "
+  //     ) {
+  //       contentIndex++;
+  //       this.content.insert(contentIndex - 1, " ");
+  //       i += 1;
+  //       continue;
+  //     }
 
-      if (!currentFormat) {
-        currentFormat = renderItem.format;
-      }
+  //     if (!currentFormat) {
+  //       currentFormat = renderItem.format;
+  //     }
 
-      if (
-        currentFormat?.color !== renderItem.format.color ||
-        currentFormat?.fontFamily !== renderItem.format.fontFamily ||
-        currentFormat?.fontSize !== renderItem.format.fontSize ||
-        currentFormat?.fontWeight !== renderItem.format.fontWeight ||
-        currentFormat?.isLineBreak !== renderItem.format.isLineBreak ||
-        currentFormat?.italic !== renderItem.format.italic ||
-        currentFormat?.underline !== renderItem.format.underline
-      ) {
-        this.formatting.insert(
-          new Interval(formatStart, formatEnd - 1),
-          currentFormat
-        );
+  //     if (
+  //       currentFormat?.color !== renderItem.format.color ||
+  //       currentFormat?.fontFamily !== renderItem.format.fontFamily ||
+  //       currentFormat?.fontSize !== renderItem.format.fontSize ||
+  //       currentFormat?.fontWeight !== renderItem.format.fontWeight ||
+  //       currentFormat?.isLineBreak !== renderItem.format.isLineBreak ||
+  //       currentFormat?.italic !== renderItem.format.italic ||
+  //       currentFormat?.underline !== renderItem.format.underline
+  //     ) {
+  //       this.formatting.insert(
+  //         new Interval(formatStart, formatEnd - 1),
+  //         currentFormat
+  //       );
 
-        formatStart += formatDiff;
-        currentFormat = renderItem.format;
-        formatDiff = 0;
-      }
+  //       formatStart += formatDiff;
+  //       currentFormat = renderItem.format;
+  //       formatDiff = 0;
+  //     }
 
-      formatEnd++;
-      formatDiff++;
-      isNewLine = false;
-    }
-  }
+  //     formatEnd++;
+  //     formatDiff++;
+  //     isNewLine = false;
+  //   }
+  // }
 
   shiftIntervalsAfter(index: number, shiftAmount: number) {
     // Get all intervals
@@ -484,7 +513,7 @@ class FormattedPage {
 
   adjustFormatting(index: number, length: number) {
     // TODO: optimize
-    this.formatting.forEach((key: [number, number], value) => {
+    (this.formatting as any).forEach((key: [number, number], value) => {
       if (key[0] >= index) {
         this.formatting.remove(key);
         this.formatting.insert(
@@ -595,9 +624,14 @@ class FormattedPage {
   updateLayout(
     start: number,
     end: number,
-    insertLength: number,
-    insertIndex: number
+    insertLength?: number,
+    insertIndex?: number
   ) {
+    if (!insertIndex || !insertLength) {
+      console.warn("Bad update layout?");
+      return;
+    }
+
     const text = this.content.substring(start, end);
     const formats = this.formatting.search(
       new Interval(start, end),
@@ -626,7 +660,9 @@ class FormattedPage {
     insertLength: number,
     insertIndex: number
   ): RenderItem[] {
-    let layoutInfo = [];
+    this.spanNodes = [];
+
+    let layoutInfo: RenderItem[] = [];
     let currentX = 0;
     let currentY = 0;
     let lineHeight = 0;
@@ -638,6 +674,13 @@ class FormattedPage {
     let isHeadline1 = false;
     const bulletIndent = 40;
 
+    let cachedSizing = [];
+
+    let spanStarted = false;
+    let spanFinished = false;
+
+    let spanNode: SpanItem = defaultSpan;
+
     for (let i = 0; i < text.length; i++) {
       const prevChar = text[i - 1];
       const char = text[i];
@@ -648,20 +691,24 @@ class FormattedPage {
         isNewLine = true;
         isBulletPoint = false;
         isHeadline1 = false;
-        continue;
-      }
 
-      if (isNewLine && char === "-" && text[i + 1] === " ") {
+        spanStarted = true;
+        continue;
+      } else if (isNewLine && char === "-" && text[i + 1] === " ") {
         isBulletPoint = true;
         i++; // Skip the space after the dash
         currentX = bulletIndent; // Indent the text after the bullet
         contentIndex++;
-      }
 
-      if (isNewLine && char === "#" && text[i + 1] === " ") {
+        spanStarted = true;
+      } else if (isNewLine && char === "#" && text[i + 1] === " ") {
         isHeadline1 = true;
         i++; // Skip the space after the pound
         contentIndex++;
+
+        spanStarted = true;
+      } else {
+        spanStarted = false;
       }
 
       contentIndex++;
@@ -728,8 +775,13 @@ class FormattedPage {
 
       const capHeight = getCapHeightPx(this.fontData, style);
 
+      if (!(currentX + cachedWidth > this.size.width) || !((currentY + capHeight > pageHeight)) || !isNewLine) {
+          spanFinished = false;
+      }
+
       if (isNewLine) {
         lineHeight = capHeight;
+        spanFinished = true;
       } else {
         lineHeight = Math.max(lineHeight, capHeight);
       }
@@ -738,13 +790,26 @@ class FormattedPage {
         currentX = isBulletPoint ? bulletIndent : 0;
         currentY += lineHeight;
         lineHeight = 0;
-      }
 
+        spanFinished = true;
+      } 
+      
       if (currentY + capHeight > pageHeight) {
         currentPageNumber++;
         currentY = 0;
         isNewLine = true;
         isBulletPoint = false;
+
+        spanFinished = true;
+      }
+
+      if (spanStarted) {
+        spanNode = defaultSpan;
+      }
+
+      if (spanFinished) {
+        this.spanNodes.push(spanNode);
+        spanNode = defaultSpan;
       }
 
       // Add bullet point if necessary
@@ -771,6 +836,18 @@ class FormattedPage {
           format: style,
           page: currentPageNumber,
         });
+        spanNode = {
+          realText: "# ", // hide markdown, keep everything indexed properly
+          text: "",
+          x: 0,
+          y: currentY,
+          // width: cachedWidth,
+          height: cachedHeight,
+          // capHeight,
+          format: style,
+          page: currentPageNumber,
+          charPositions: []
+        }
       } else if (isBulletPoint && isNewLine) {
         layoutInfo.push({
           realChar: "-",
@@ -794,9 +871,22 @@ class FormattedPage {
           format: style,
           page: currentPageNumber,
         });
+        spanNode = {
+          realText: "- ", // hide markdown, keep everything indexed properly
+          text: "•",
+          x: 0,
+          y: currentY,
+          // width: cachedWidth,
+          height: cachedHeight,
+          // capHeight,
+          format: style,
+          page: currentPageNumber,
+          charPositions: []
+        }
       } else {
         layoutInfo.push({
           char,
+          realChar: char,
           x: currentX ? currentX + letterSpacing : 0,
           y: currentY,
           width: cachedWidth,
@@ -806,6 +896,25 @@ class FormattedPage {
           format: style,
           page: currentPageNumber,
         });
+        spanNode = {
+          realText: spanNode.realText + char, // hide markdown, keep everything indexed properly
+          text: spanNode.text + char,
+          x: 0,
+          y: currentY,
+          // width: cachedWidth,
+          height: cachedHeight,
+          // capHeight,
+          format: style,
+          page: currentPageNumber,
+          // charPositions: []
+          charPositions: [...spanNode.charPositions, {
+            width: cachedWidth,
+            height: cachedHeight,
+            x: currentX ? currentX + letterSpacing : 0,
+            y: currentY
+          }]
+
+        }
       }
 
       if (isHeadline1 && isNewLine) {
@@ -965,7 +1074,7 @@ export class MultiPageEditor {
   public visuals: Visual[] = []; // needn't be organized by page
   public size: DocumentSize;
   public visibleLines: number;
-  public scrollPosition: number;
+  public scrollPosition: number = 0;
   public fontData: FontData[];
 
   public rebalanceDebounce: any;
@@ -1076,7 +1185,7 @@ export class MultiPageEditor {
     let endLocalIndex = this.getLocalIndex(globalEnd, endPageIndex, false);
     let adjustedEndLocal = this.getLocalIndex(globalEndNl, endPageIndex, false);
 
-    const callback = (index) => {
+    const callback = () => {
       const diff = startLocalIndex - endLocalIndex;
       // console.info("diff", diff);
       this.shiftAllFormats(endLocalIndex, diff);
@@ -1152,6 +1261,15 @@ export class MultiPageEditor {
     console.info("renderAll", formattedText, layout, combined);
 
     return combined;
+  }
+
+  renderNodes() {
+    const startIndex = 0;
+    const endIndex = this.pages.length * this.avgPageLength;
+
+    const nodes = this.getSpanNodes(startIndex, endIndex);
+
+    return nodes;
   }
 
   alterFormatting(
@@ -1232,11 +1350,11 @@ export class MultiPageEditor {
     performance.measure("insert", "insert-started", "insert-ended");
   }
 
-  insertJson(json: RenderItem[], setMasterJson: any) {
-    this.pages[0].insertJson(json);
+  // insertJson(json: RenderItem[], setMasterJson: any) {
+  //   this.pages[0].insertJson(json);
 
-    this.renderAndRebalance(0, setMasterJson, true, json.length, 0);
-  }
+  //   this.renderAndRebalance(0, setMasterJson, true, json.length, 0);
+  // }
 
   shiftAllFormats(index, totalInsertedLength) {
     for (let i = 0; i < this.pages.length; i++) {
@@ -1266,7 +1384,7 @@ export class MultiPageEditor {
     );
 
     if (!initialize) {
-      const renderableAll = this.renderAll();
+      const renderableAll = this.renderNodes();
       setMasterJson(renderableAll);
     }
   }
@@ -1301,6 +1419,18 @@ export class MultiPageEditor {
     return result;
   }
 
+  getSpanNodes(start: number, end: number) {
+    let startPage = this.getPageIndexForGlobalIndex(start);
+    let endPage = this.getPageIndexForGlobalIndex(end);
+
+    let nodesByPage: SpanItem[][] = [];
+    for (let i = startPage; i <= endPage; i++) {
+      nodesByPage[i] = this.pages[i].spanNodes;
+    }
+
+    return nodesByPage;
+  } 
+
   getNewlinesTillChar(text: string) {
     let newlines = 0;
     for (let i = 0; i < text.length; i++) {
@@ -1314,6 +1444,126 @@ export class MultiPageEditor {
     return newlines;
   }
 
+  // combineTextAndLayout(
+  //   formattedText: FormattedText[],
+  //   layout: LayoutNode[],
+  //   startIndex: number,
+  //   endIndex: number
+  // ): RenderItem[] {
+  //   let renderItems: RenderItem[] = [];
+  //   let textIndex = 0;
+
+  //   const startPage = this.getPageIndexForGlobalIndex(startIndex);
+
+  //   for (const layoutItem of layout) {
+  //     const { start, end, layoutInfo } = layoutItem;
+
+  //     if (!layoutInfo) {
+  //       continue;
+  //     }
+
+  //     // Skip layout items that are completely before the virtualized range
+  //     if (end < startIndex) {
+  //       textIndex++;
+  //       continue;
+  //     }
+
+  //     // Stop processing if we've gone past the virtualized range
+  //     if (start > endIndex) {
+  //       break;
+  //     }
+
+  //     const virtualizedStart = startIndex - startPage * 3000;
+  //     const virtualizedEnd = layoutInfo.length;
+
+  //     let newlinesEndIndex = 0;
+  //     let contentIndex = 0; // TODO: need to use some sort of contentIndex in other places as well?
+  //     for (let i = virtualizedStart; i < virtualizedEnd; i++) {
+  //       const charLayout = layoutInfo[i];
+
+  //       let format: Style | undefined | null;
+
+  //       if (newlinesEndIndex && contentIndex < newlinesEndIndex) {
+  //         continue;
+  //       }
+
+  //       // const thisChar = this.pages[textIndex].content.substring(i, i + 1);
+  //       // if (charLayout.char === "\n") {
+  //       //   continue;
+  //       // }
+
+  //       // const textItem = formattedText[textIndex];
+  //       // TODO: get substring of next character and check if newline
+  //       const nextChars = this.pages[textIndex].content.substring(
+  //         contentIndex + 1
+  //       );
+  //       const newlinesToAdd = this.getNewlinesTillChar(nextChars);
+  //       if (newlinesToAdd) {
+  //         newlinesEndIndex = contentIndex + newlinesToAdd;
+  //         contentIndex += newlinesToAdd;
+  //       }
+  //       // console.info("newlinesTOAdd", newlinesToAdd);
+  //       const textItems = this.pages[textIndex].formatting.search(
+  //         [i, i + 1],
+  //         (value, key) => ({
+  //           interval: key,
+  //           format: value,
+  //         })
+  //       ) as unknown as MappedFormat[];
+
+  //       const textItem = textItems[textItems.length - 1];
+
+  //       if (textItem) {
+  //         format = textItem.format;
+  //       }
+
+  //       // if (!format) {
+  //       //   format = defaultStyle;
+  //       // }
+
+  //       // if (charLayout.x === -1 && charLayout.y -1) {
+  //       //   console.info("no position", charLayout.char);
+  //       //   continue;
+  //       // }
+
+  //       renderItems.push({
+  //         realChar: charLayout.realChar ? charLayout.realChar : charLayout.char,
+  //         char: charLayout.char,
+  //         x: charLayout.x,
+  //         y: charLayout.y,
+  //         width: charLayout.width,
+  //         height: charLayout.height,
+  //         capHeight: charLayout.capHeight,
+  //         // format: format, // ?
+  //         format: charLayout.format,
+  //         page: charLayout.page,
+  //       });
+
+  //       contentIndex++;
+
+  //       if (newlinesToAdd) {
+  //         for (let n = 0; n < newlinesToAdd; n++) {
+  //           renderItems.push({
+  //             realChar: "\n",
+  //             char: "\n",
+  //             x: charLayout.x,
+  //             y: charLayout.y,
+  //             width: charLayout.width,
+  //             height: charLayout.height,
+  //             capHeight: charLayout.capHeight,
+  //             format: charLayout.format,
+  //             page: charLayout.page,
+  //           });
+  //         }
+  //       }
+  //     }
+
+  //     textIndex++;
+  //   }
+
+  //   return renderItems;
+  // }
+
   combineTextAndLayout(
     formattedText: FormattedText[],
     layout: LayoutNode[],
@@ -1321,114 +1571,74 @@ export class MultiPageEditor {
     endIndex: number
   ): RenderItem[] {
     let renderItems: RenderItem[] = [];
-    let textIndex = 0;
+    let charOffset = 0;
 
-    const startPage = this.getPageIndexForGlobalIndex(startIndex);
-
-    for (const layoutItem of layout) {
-      const { start, end, layoutInfo } = layoutItem;
-
-      if (!layoutInfo) {
+    for (const span of formattedText) {
+      const spanStart = charOffset;
+      const spanEnd = charOffset + span.text.length;
+      
+      // Skip if outside virtualized range
+      if (spanEnd < startIndex || spanStart > endIndex) {
+        charOffset += span.text.length;
         continue;
       }
 
-      // Skip layout items that are completely before the virtualized range
-      if (end < startIndex) {
-        textIndex++;
+      // Find the layout node that covers this span
+      const layoutNode = layout.find(node => 
+        node.start <= spanStart && node.end >= spanEnd
+      );
+      
+      if (!layoutNode?.layoutInfo) {
+        charOffset += span.text.length;
         continue;
       }
 
-      // Stop processing if we've gone past the virtualized range
-      if (start > endIndex) {
-        break;
-      }
+      // Split span on newlines
+      const lines = span.text.split('\n');
+      
+      for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        const lineText = lines[lineIndex];
+        const lineStart = charOffset;
+        const lineEnd = charOffset + lineText.length;
+        
+        if (lineText.length > 0) {  // Only create RenderItem for non-empty text
+          const spanLayouts = layoutNode.layoutInfo.slice(
+            lineStart - layoutNode.start,
+            lineEnd - layoutNode.start
+          );
+          
+          const firstChar = spanLayouts[0];
+          
+          if (spanLayouts.length) {
+            let format = defaultStyle;
+            if (span.format) {
+              format = span.format;
+            }
 
-      const virtualizedStart = startIndex - startPage * 3000;
-      const virtualizedEnd = layoutInfo.length;
-
-      let newlinesEndIndex = 0;
-      let contentIndex = 0; // TODO: need to use some sort of contentIndex in other places as well?
-      for (let i = virtualizedStart; i < virtualizedEnd; i++) {
-        const charLayout = layoutInfo[i];
-
-        let format: Style | undefined | null;
-
-        if (newlinesEndIndex && contentIndex < newlinesEndIndex) {
-          continue;
-        }
-
-        // const thisChar = this.pages[textIndex].content.substring(i, i + 1);
-        // if (charLayout.char === "\n") {
-        //   continue;
-        // }
-
-        // const textItem = formattedText[textIndex];
-        // TODO: get substring of next character and check if newline
-        const nextChars = this.pages[textIndex].content.substring(
-          contentIndex + 1
-        );
-        const newlinesToAdd = this.getNewlinesTillChar(nextChars);
-        if (newlinesToAdd) {
-          newlinesEndIndex = contentIndex + newlinesToAdd;
-          contentIndex += newlinesToAdd;
-        }
-        // console.info("newlinesTOAdd", newlinesToAdd);
-        const textItems = this.pages[textIndex].formatting.search(
-          [i, i + 1],
-          (value, key) => ({
-            interval: key,
-            format: value,
-          })
-        ) as unknown as MappedFormat[];
-
-        const textItem = textItems[textItems.length - 1];
-
-        if (textItem) {
-          format = textItem.format;
-        }
-
-        // if (!format) {
-        //   format = defaultStyle;
-        // }
-
-        // if (charLayout.x === -1 && charLayout.y -1) {
-        //   console.info("no position", charLayout.char);
-        //   continue;
-        // }
-
-        renderItems.push({
-          realChar: charLayout.realChar ? charLayout.realChar : charLayout.char,
-          char: charLayout.char,
-          x: charLayout.x,
-          y: charLayout.y,
-          width: charLayout.width,
-          height: charLayout.height,
-          capHeight: charLayout.capHeight,
-          // format: format, // ?
-          format: charLayout.format,
-          page: charLayout.page,
-        });
-
-        contentIndex++;
-
-        if (newlinesToAdd) {
-          for (let n = 0; n < newlinesToAdd; n++) {
             renderItems.push({
-              realChar: "\n",
-              char: "\n",
-              x: charLayout.x,
-              y: charLayout.y,
-              width: charLayout.width,
-              height: charLayout.height,
-              capHeight: charLayout.capHeight,
-              format: charLayout.format,
-              page: charLayout.page,
+              text: lineText,
+              x: firstChar.x,
+              y: firstChar.y,
+              width: this.size.width - firstChar.x,
+              height: firstChar.height,
+              format: format,
+              page: firstChar.page,
+              capHeight: firstChar.capHeight || 0,
+              charPositions: spanLayouts.map(c => ({ x: c.x, y: c.y, height: c.height as number, width: c.width as number }))
             });
+          } else {
+            console.warn("Breaking combine text and layout");
+            break;
           }
         }
+        
+        charOffset += lineText.length;
+        
+        // Account for the newline character itself (except after last line)
+        if (lineIndex < lines.length - 1) {
+          charOffset += 1;  // The \n character
+        }
       }
-
-      textIndex++;
     }
 
     return renderItems;
@@ -1465,16 +1675,16 @@ export class MultiPageEditor {
     changeLength: number,
     changeIndex: number,
     isInsertion: boolean = true,
-    setMasterJson: any
+    setMasterJson: (json: SpanItem[][]) => void,
   ) {
     performance.mark("rebalance-started");
 
-    const rebalance = (i: numberm, asyncScheduling: boolean) => {
+    const rebalance = (i: number, asyncScheduling: boolean) => {
       const currentPage = this.pages[i];
       if (!currentPage) {
         if (i > 0) {
           // After the last page, do a final render
-          const renderableAll = this.renderAll();
+          const renderableAll = this.renderNodes();
           if (setMasterJson) {
             setMasterJson(renderableAll);
           }
@@ -1547,7 +1757,7 @@ export class MultiPageEditor {
         rebalance(i, false);
         i++;
       }
-      const renderableAll = this.renderAll();
+      const renderableAll = this.renderNodes();
       if (setMasterJson) {
         setMasterJson(renderableAll);
       }

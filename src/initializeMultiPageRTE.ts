@@ -33,6 +33,7 @@ let visualsTransformer: Konva.Transformer | null = null;
 let cursorGroup = null;
 
 let isSelected = false;
+let mouseIsDown = false;
 
 let debounceTimer = null;
 let shadowSize = 25;
@@ -521,18 +522,21 @@ export const initializeMultiPageRTE = (
   // };
 
   const handleTextClick = (e: KonvaEventObject<MouseEvent>) => {
-    console.info("text click");
+    if (!isSelectingText) {
+      console.info("text click");
+      setFirstSelectedNode(null);
+      setLastSelectedNode(null);
 
-    setFirstSelectedNode(null);
-    setLastSelectedNode(null);
+      insertCursor(e);
 
-    insertCursor(e);
+      clearSelectionHightlight(stage, layer);
 
-    clearSelectionHightlight(stage, layer);
+      showPrimaryToolbar();
+      selectedShape = null;
+      renderVisuals();
+    }
 
-    showPrimaryToolbar();
-    selectedShape = null;
-    renderVisuals();
+    setIsSelectingText(false);
   };
 
   const insertCursor = (e: KonvaEventObject<MouseEvent>) => {
@@ -624,7 +628,8 @@ export const initializeMultiPageRTE = (
     if (!masterJson) return;
 
     console.info("text down", e);
-    setIsSelectingText(true);
+
+    mouseIsDown = true;
 
     const target = e.target;
     const spanId = target.id();
@@ -664,6 +669,10 @@ export const initializeMultiPageRTE = (
   const handleTextMouseMove = (e: KonvaEventObject<MouseEvent>) => {
     if (!masterJson) return;
 
+    if (mouseIsDown) {
+      setIsSelectingText(true);
+    }
+
     if (isSelectingText && e.evt.buttons) {
       const target = e.target;
       const spanId = target.id();
@@ -674,11 +683,11 @@ export const initializeMultiPageRTE = (
 
       const firstGlobalIndex = firstSelectedNode ? parseInt(firstSelectedNode.split("-")[2]) : 0;
 
-      console.info("txt move", firstGlobalIndex, fullIndex)
+      console.info("txt move", firstGlobalIndex >= fullIndex, firstGlobalIndex, fullIndex)
       
       // Determine selection direction
       if (firstGlobalIndex >= fullIndex) {
-        setFirstSelectedNode(selectionNode);
+        // setFirstSelectedNode(selectionNode);
         setSelectionDirection("backward");
       } else {
         setLastSelectedNode(selectionNode);
@@ -691,7 +700,7 @@ export const initializeMultiPageRTE = (
 
   const handleTextMouseUp = (e: KonvaEventObject<MouseEvent>) => {
     console.info("text up", e);
-    setIsSelectingText(false);
+    mouseIsDown = false;
   };
 
   const handleFormattingDown = (formatting: Partial<Style>) => {
@@ -811,7 +820,7 @@ export const initializeMultiPageRTE = (
           : charText.format.fontWeight,
         fill: charText.format.color,
         textDecoration: charText.format.underline ? "underline" : "",
-        width: charText.width,
+        // width: charText.width,
         wrap: "char"
       });
 

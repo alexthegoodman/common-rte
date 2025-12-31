@@ -53,6 +53,7 @@ export interface SpanItem {
   x: number;
   y: number;
   height: number;
+  width: number;
   format: Style;
   page: number;
   charPositions: { x: number, y: number, height: number, width: number }[]
@@ -112,7 +113,9 @@ export const defaultVisual: Visual = {
   url: ""
 };
 
-const letterSpacing = 1;
+// const letterSpacing = 1;
+
+const letterSpacing = (fontSize: number) => { return fontSize * 0.12 };
 
 export const defaultStyle: Style = {
   color: "black",
@@ -131,6 +134,7 @@ const defaultSpan: SpanItem = {
   y: 0,
   format: defaultStyle,
   height: 0,
+  width: 0,
   page: 0,
   charPositions: []
 };
@@ -376,78 +380,6 @@ class FormattedPage {
     );
   }
 
-  // insertJson(json: RenderItem[]) {
-  //   let currentFormat: Style | null = null;
-  //   let formatStart = 0;
-  //   let formatEnd = 0;
-  //   let formatDiff = 0;
-  //   let isNewLine = true;
-  //   let contentIndex = 0;
-  //   for (let i = 0; i < json.length; i++) {
-  //     contentIndex++;
-
-  //     const renderItem = json[i];
-
-  //     const prevRenderItem = json[i - 1];
-  //     const nextRenderItem = json[i + 1];
-
-  //     if (prevRenderItem?.char === "\n") {
-  //       isNewLine = true;
-  //     }
-
-  //     this.content.insert(contentIndex - 1, renderItem.realChar);
-
-  //     if (
-  //       isNewLine &&
-  //       renderItem.realChar === "-" &&
-  //       nextRenderItem.realChar === " "
-  //     ) {
-  //       contentIndex++;
-  //       this.content.insert(contentIndex - 1, " ");
-  //       i += 1;
-  //       continue;
-  //     }
-
-  //     if (
-  //       isNewLine &&
-  //       renderItem.realChar === "#" &&
-  //       nextRenderItem.realChar === " "
-  //     ) {
-  //       contentIndex++;
-  //       this.content.insert(contentIndex - 1, " ");
-  //       i += 1;
-  //       continue;
-  //     }
-
-  //     if (!currentFormat) {
-  //       currentFormat = renderItem.format;
-  //     }
-
-  //     if (
-  //       currentFormat?.color !== renderItem.format.color ||
-  //       currentFormat?.fontFamily !== renderItem.format.fontFamily ||
-  //       currentFormat?.fontSize !== renderItem.format.fontSize ||
-  //       currentFormat?.fontWeight !== renderItem.format.fontWeight ||
-  //       currentFormat?.isLineBreak !== renderItem.format.isLineBreak ||
-  //       currentFormat?.italic !== renderItem.format.italic ||
-  //       currentFormat?.underline !== renderItem.format.underline
-  //     ) {
-  //       this.formatting.insert(
-  //         new Interval(formatStart, formatEnd - 1),
-  //         currentFormat
-  //       );
-
-  //       formatStart += formatDiff;
-  //       currentFormat = renderItem.format;
-  //       formatDiff = 0;
-  //     }
-
-  //     formatEnd++;
-  //     formatDiff++;
-  //     isNewLine = false;
-  //   }
-  // }
-
   shiftIntervalsAfter(index: number, shiftAmount: number) {
     // Get all intervals
     const allIntervals = this.formatting.search(
@@ -567,14 +499,32 @@ class FormattedPage {
       existingFormats[existingFormats.length - 1].interval.high < end
     ) {
       const defaultFormatWithChanges = { ...defaultStyle, ...formatChanges };
+
+      // console.info("updating format", defaultFormatWithChanges, formatStart, formatEnd)
+
       this.formatting.insert(
         new Interval(formatStart, formatEnd),
         defaultFormatWithChanges
       );
     }
 
+    const newFormat = this.formatting.search(
+      new Interval(formatStart, formatEnd),
+      (value, key) => ({
+        interval: key,
+        format: value,
+      })
+    ) as unknown as MappedFormat[];
+
+    console.info("updating format", newFormat, formatStart, formatEnd)
+
     // Update layout for the affected range
-    this.updateLayout(0, this.content.length);
+    this.updateLayout(
+      0, 
+      this.content.length, 
+      start, 
+      end
+    );
   }
 
   getFormattedText(start: number, end: number) {
@@ -841,7 +791,7 @@ class FormattedPage {
           text: "",
           x: 0,
           y: currentY,
-          // width: cachedWidth,
+          width: 0,
           height: cachedHeight,
           // capHeight,
           format: style,
@@ -876,7 +826,7 @@ class FormattedPage {
           text: "•",
           x: 0,
           y: currentY,
-          // width: cachedWidth,
+          width: cachedWidth,
           height: cachedHeight,
           // capHeight,
           format: style,
@@ -887,7 +837,7 @@ class FormattedPage {
         layoutInfo.push({
           char,
           realChar: char,
-          x: currentX ? currentX + letterSpacing : 0,
+          x: currentX ? currentX + letterSpacing(style.fontSize) : 0,
           y: currentY,
           width: cachedWidth,
           height: cachedHeight,
@@ -896,31 +846,66 @@ class FormattedPage {
           format: style,
           page: currentPageNumber,
         });
-        spanNode = {
-          realText: spanNode.realText + char, // hide markdown, keep everything indexed properly
-          text: spanNode.text + char,
-          x: 0,
-          y: currentY,
-          // width: cachedWidth,
-          height: cachedHeight,
-          // capHeight,
-          format: style,
-          page: currentPageNumber,
-          // charPositions: []
-          charPositions: [...spanNode.charPositions, {
-            width: cachedWidth,
-            height: cachedHeight,
-            x: currentX ? currentX + letterSpacing : 0,
-            y: currentY
-          }]
 
+        if (
+          spanNode?.format.color !== style.color ||
+          spanNode?.format.fontFamily !== style.fontFamily ||
+          spanNode?.format.fontSize !== style.fontSize ||
+          spanNode?.format.fontWeight !== style.fontWeight ||
+          spanNode?.format.isLineBreak !== style.isLineBreak ||
+          spanNode?.format.italic !== style.italic ||
+          spanNode?.format.underline !== style.underline
+        ) {
+          let prevX = spanNode.width + spanNode.x;
+
+          console.info("prevx", prevX);
+
+          this.spanNodes.push(spanNode);
+          spanNode = defaultSpan;
+          spanNode = {
+            realText: spanNode.realText + char, // hide markdown, keep everything indexed properly
+            text: spanNode.text + char,
+            x: prevX,
+            y: currentY,
+            width: spanNode.width + cachedWidth + letterSpacing(style.fontSize),
+            height: cachedHeight,
+            // capHeight,
+            format: style,
+            page: currentPageNumber,
+            // charPositions: []
+            charPositions: [...spanNode.charPositions, {
+              width: cachedWidth,
+              height: cachedHeight,
+              x: currentX ? currentX + letterSpacing(style.fontSize) : 0,
+              y: currentY
+            }]
+          }
+        } else {
+          spanNode = {
+            realText: spanNode.realText + char, // hide markdown, keep everything indexed properly
+            text: spanNode.text + char,
+            x: spanNode.x,
+            y: currentY,
+            width: spanNode.width + cachedWidth + letterSpacing(style.fontSize),
+            height: cachedHeight,
+            // capHeight,
+            format: style,
+            page: currentPageNumber,
+            // charPositions: []
+            charPositions: [...spanNode.charPositions, {
+              width: cachedWidth,
+              height: cachedHeight,
+              x: currentX ? currentX + letterSpacing(style.fontSize) : 0,
+              y: currentY
+            }]
+          }
         }
       }
 
       if (isHeadline1 && isNewLine) {
         currentX += 0;
       } else {
-        currentX += cachedWidth + letterSpacing;
+        currentX += cachedWidth + letterSpacing(style.fontSize);
       }
 
       isNewLine = false;
@@ -1205,64 +1190,6 @@ export class MultiPageEditor {
     this.renderAndRebalance(startPageIndex, setMasterJson, false, 0, 0, false);
   }
 
-  addNewlinesToIndex(globalIndex: number) {}
-
-  // run on scroll?
-  // TODO: account for newlines?
-  renderVisible() {
-    performance.mark("render-visible-started");
-    // const startIndex = this.scrollPosition * this.size.height;
-    // const startIndex = Math.round(
-    //   this.scrollPosition ? this.scrollPosition / 26 : 0
-    // );
-    const startIndex = Math.round(this.scrollPosition * 3);
-    // const endIndex = this.pages.length * this.avgPageLength;
-    // const scrollPage = startIndex / (this.pages.length * this.avgPageLength)
-    // const endIndex = this.avgPageLength;
-    const endIndex = startIndex + this.avgPageLength;
-
-    const formattedText = this.getFormattedText(startIndex, endIndex);
-    const layout = this.getLayoutInfo(startIndex, endIndex);
-    // console.info("check items", formattedText, layout);
-    const combined = this.combineTextAndLayout(
-      formattedText,
-      layout,
-      startIndex,
-      endIndex
-    );
-
-    performance.mark("render-visible-ended");
-    performance.measure(
-      "renderVisible",
-      "render-visible-started",
-      "render-visible-ended"
-    );
-
-    return { startIndex, combined };
-  }
-
-  renderAll() {
-    // const startIndex = this.scrollPosition * this.size.height;
-    // console.info("render all", this.pages.length);
-    const startIndex = 0;
-    const endIndex = this.pages.length * this.avgPageLength;
-
-    const formattedText = this.getFormattedText(startIndex, endIndex);
-    // console.info("formattedText", formattedText);
-    const layout = this.getLayoutInfo(startIndex, endIndex);
-
-    const combined = this.combineTextAndLayout(
-      formattedText,
-      layout,
-      startIndex,
-      endIndex
-    );
-
-    console.info("renderAll", formattedText, layout, combined);
-
-    return combined;
-  }
-
   renderNodes() {
     const startIndex = 0;
     const endIndex = this.pages.length * this.avgPageLength;
@@ -1442,206 +1369,6 @@ export class MultiPageEditor {
       }
     }
     return newlines;
-  }
-
-  // combineTextAndLayout(
-  //   formattedText: FormattedText[],
-  //   layout: LayoutNode[],
-  //   startIndex: number,
-  //   endIndex: number
-  // ): RenderItem[] {
-  //   let renderItems: RenderItem[] = [];
-  //   let textIndex = 0;
-
-  //   const startPage = this.getPageIndexForGlobalIndex(startIndex);
-
-  //   for (const layoutItem of layout) {
-  //     const { start, end, layoutInfo } = layoutItem;
-
-  //     if (!layoutInfo) {
-  //       continue;
-  //     }
-
-  //     // Skip layout items that are completely before the virtualized range
-  //     if (end < startIndex) {
-  //       textIndex++;
-  //       continue;
-  //     }
-
-  //     // Stop processing if we've gone past the virtualized range
-  //     if (start > endIndex) {
-  //       break;
-  //     }
-
-  //     const virtualizedStart = startIndex - startPage * 3000;
-  //     const virtualizedEnd = layoutInfo.length;
-
-  //     let newlinesEndIndex = 0;
-  //     let contentIndex = 0; // TODO: need to use some sort of contentIndex in other places as well?
-  //     for (let i = virtualizedStart; i < virtualizedEnd; i++) {
-  //       const charLayout = layoutInfo[i];
-
-  //       let format: Style | undefined | null;
-
-  //       if (newlinesEndIndex && contentIndex < newlinesEndIndex) {
-  //         continue;
-  //       }
-
-  //       // const thisChar = this.pages[textIndex].content.substring(i, i + 1);
-  //       // if (charLayout.char === "\n") {
-  //       //   continue;
-  //       // }
-
-  //       // const textItem = formattedText[textIndex];
-  //       // TODO: get substring of next character and check if newline
-  //       const nextChars = this.pages[textIndex].content.substring(
-  //         contentIndex + 1
-  //       );
-  //       const newlinesToAdd = this.getNewlinesTillChar(nextChars);
-  //       if (newlinesToAdd) {
-  //         newlinesEndIndex = contentIndex + newlinesToAdd;
-  //         contentIndex += newlinesToAdd;
-  //       }
-  //       // console.info("newlinesTOAdd", newlinesToAdd);
-  //       const textItems = this.pages[textIndex].formatting.search(
-  //         [i, i + 1],
-  //         (value, key) => ({
-  //           interval: key,
-  //           format: value,
-  //         })
-  //       ) as unknown as MappedFormat[];
-
-  //       const textItem = textItems[textItems.length - 1];
-
-  //       if (textItem) {
-  //         format = textItem.format;
-  //       }
-
-  //       // if (!format) {
-  //       //   format = defaultStyle;
-  //       // }
-
-  //       // if (charLayout.x === -1 && charLayout.y -1) {
-  //       //   console.info("no position", charLayout.char);
-  //       //   continue;
-  //       // }
-
-  //       renderItems.push({
-  //         realChar: charLayout.realChar ? charLayout.realChar : charLayout.char,
-  //         char: charLayout.char,
-  //         x: charLayout.x,
-  //         y: charLayout.y,
-  //         width: charLayout.width,
-  //         height: charLayout.height,
-  //         capHeight: charLayout.capHeight,
-  //         // format: format, // ?
-  //         format: charLayout.format,
-  //         page: charLayout.page,
-  //       });
-
-  //       contentIndex++;
-
-  //       if (newlinesToAdd) {
-  //         for (let n = 0; n < newlinesToAdd; n++) {
-  //           renderItems.push({
-  //             realChar: "\n",
-  //             char: "\n",
-  //             x: charLayout.x,
-  //             y: charLayout.y,
-  //             width: charLayout.width,
-  //             height: charLayout.height,
-  //             capHeight: charLayout.capHeight,
-  //             format: charLayout.format,
-  //             page: charLayout.page,
-  //           });
-  //         }
-  //       }
-  //     }
-
-  //     textIndex++;
-  //   }
-
-  //   return renderItems;
-  // }
-
-  combineTextAndLayout(
-    formattedText: FormattedText[],
-    layout: LayoutNode[],
-    startIndex: number,
-    endIndex: number
-  ): RenderItem[] {
-    let renderItems: RenderItem[] = [];
-    let charOffset = 0;
-
-    for (const span of formattedText) {
-      const spanStart = charOffset;
-      const spanEnd = charOffset + span.text.length;
-      
-      // Skip if outside virtualized range
-      if (spanEnd < startIndex || spanStart > endIndex) {
-        charOffset += span.text.length;
-        continue;
-      }
-
-      // Find the layout node that covers this span
-      const layoutNode = layout.find(node => 
-        node.start <= spanStart && node.end >= spanEnd
-      );
-      
-      if (!layoutNode?.layoutInfo) {
-        charOffset += span.text.length;
-        continue;
-      }
-
-      // Split span on newlines
-      const lines = span.text.split('\n');
-      
-      for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-        const lineText = lines[lineIndex];
-        const lineStart = charOffset;
-        const lineEnd = charOffset + lineText.length;
-        
-        if (lineText.length > 0) {  // Only create RenderItem for non-empty text
-          const spanLayouts = layoutNode.layoutInfo.slice(
-            lineStart - layoutNode.start,
-            lineEnd - layoutNode.start
-          );
-          
-          const firstChar = spanLayouts[0];
-          
-          if (spanLayouts.length) {
-            let format = defaultStyle;
-            if (span.format) {
-              format = span.format;
-            }
-
-            renderItems.push({
-              text: lineText,
-              x: firstChar.x,
-              y: firstChar.y,
-              width: this.size.width - firstChar.x,
-              height: firstChar.height,
-              format: format,
-              page: firstChar.page,
-              capHeight: firstChar.capHeight || 0,
-              charPositions: spanLayouts.map(c => ({ x: c.x, y: c.y, height: c.height as number, width: c.width as number }))
-            });
-          } else {
-            console.warn("Breaking combine text and layout");
-            break;
-          }
-        }
-        
-        charOffset += lineText.length;
-        
-        // Account for the newline character itself (except after last line)
-        if (lineIndex < lines.length - 1) {
-          charOffset += 1;  // The \n character
-        }
-      }
-    }
-
-    return renderItems;
   }
 
   getTextLength(beforePage?: number, withNewlines = true) {
